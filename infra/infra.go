@@ -3,6 +3,7 @@ package infra
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 type Command struct {
@@ -32,29 +33,55 @@ func (c Command) String() string {
 	 `, c.Original, c.Substituted, c.Stdout, c.Stdin)
 }
 
+var wg sync.WaitGroup
+
 func Do(command string, hosts []string, flags Flags) {
+	// do all the heavy lifting here
+
 	// fmt.Println("in infra")
 	// fmt.Println("command", command)
 	fmt.Println("hosts", hosts, len(hosts))
 	fmt.Printf("flags %+v\n", flags)
 
-	// sanitize any vs. all
-	//  sure would be nice if these were in a struct so I didn't have fake bools.
-	// TODO
+	// sanitize any vs. all until I can figure flag groups TODO
 	if !flags.All && !flags.Any {
 		flags.All = true
 	}
-	// do all the heavy lifting here
 
-	// first build a list of commands
+	// build a list of commands
 	cmdList, err := buildListOfCommands(command, hosts)
 	if err != nil {
 		panic(err) // TODO fix
 	}
 
-	for _, x := range cmdList.Commands {
-		fmt.Printf("%+v\n", x)
+	// go run the things
+
+	if flags.All {
+		do_all(cmdList)
+	} else if flags.Any {
+		do_any(cmdList)
 	}
+}
+
+// done
+
+// 	for _, x := range cmdList.Commands {
+// 		wg.Add(1)
+// 		go func(Command) {
+// 			defer wg.Done()
+// 			fmt.Printf("%+v\n", x)
+// 		}(x)
+// 	}
+
+// 	wg.Wait()
+// }
+
+func do_all(cmdList CommandList) {
+	fmt.Println("in do_all with", cmdList)
+}
+
+func do_any(cmdList CommandList) {
+	fmt.Println("in do_any with", cmdList)
 }
 
 func buildListOfCommands(command string, hosts []string) (CommandList, error) {
