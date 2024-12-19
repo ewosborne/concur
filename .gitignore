@@ -27,3 +27,5 @@ go.work.sum
 
 # build artifact
 dist/
+dist/metadata.json
+dist/concur_darwin_arm64_v8.0/concur
