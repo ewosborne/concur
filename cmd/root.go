@@ -27,8 +27,10 @@ func ConcurCmdE(cmd *cobra.Command, args []string) error {
 	opts := args[1:]
 	flags := infra.Flags{}
 
+	// I sure wish there was a cleaner way to do this
 	flags.Any, _ = cmd.Flags().GetBool("any")
 	flags.All, _ = cmd.Flags().GetBool("all")
+	flags.Concurrent, _ = cmd.Flags().GetInt("concurrent")
 
 	// flags := make(map[string]string)
 	// cmd.Flags().VisitAll(func(flag *pflag.Flag) {
@@ -51,4 +53,6 @@ func init() {
 	rootCmd.Flags().Bool("all", false, "All commands")
 	rootCmd.MarkFlagsMutuallyExclusive("any", "all")
 	rootCmd.MarkFlagsOneRequired("any", "all") // TODO this isn't quite what I want.
+
+	rootCmd.Flags().IntP("concurrent", "c", 128, "Number of concurrent processes (0 = no limit)")
 }

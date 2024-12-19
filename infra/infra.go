@@ -13,8 +13,9 @@ type Command struct {
 }
 
 type Flags struct {
-	Any bool
-	All bool
+	Any        bool
+	All        bool
+	Concurrent int
 }
 
 // is this worth it?  Maybe for a String() method?
