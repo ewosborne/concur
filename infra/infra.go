@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -20,6 +21,7 @@ type Command struct {
 	StartTime   time.Time `json:"starttime"`
 	EndTime     time.Time `json:"endtime"`
 	RunTime     string    `json:"runtime"`
+	ReturnCode  int       `json:"returncode"`
 }
 
 type Flags struct {
@@ -37,27 +39,26 @@ func (c Command) String() string {
 
 }
 
-// wtf this results in unused write but setting it directly doesn't.  why?
-// func (c Command) StartTimestamp() {
-// 	c.StartTime = time.Now()
-// }
-
-func Do(command string, hosts []string, flags Flags) {
+func Do(command string, substituteArgs []string, flags Flags) {
 	// do all the heavy lifting here
+	if len(substituteArgs) < 1 {
+		fmt.Fprintf(os.Stderr, "ERROR: no arguments provided")
+		os.Exit(1)
+	}
 	systemStartTime := time.Now()
 
 	// TODO: pass flags in as float in seconds, convert to integer msec
-	fmt.Println("flags is", flags.Timeout)
+	//fmt.Println("flags is", flags.Timeout)
 	t := time.Duration(flags.Timeout) * time.Millisecond
-	fmt.Println("timeout", t)
+	//fmt.Println("timeout", t)
 	ctx, cancelCtx := context.WithTimeout(context.Background(), t)
 	defer cancelCtx()
 
-	fmt.Println("args", hosts, len(hosts))
-	fmt.Printf("flags %+v\n", flags)
+	//fmt.Println("args", substituteArgs, len(substituteArgs))
+	//fmt.Printf("flags %+v\n", flags)
 
 	// build a list of commands
-	cmdList, err := buildListOfCommands(command, hosts)
+	cmdList, err := buildListOfCommands(command, substituteArgs)
 	if err != nil {
 		panic(err) // TODO fix
 	}
@@ -69,13 +70,40 @@ func Do(command string, hosts []string, flags Flags) {
 	systemEndTime := time.Now()
 	systemRunTime := systemEndTime.Sub(systemStartTime)
 
-	//fmt.Println("all done")
-	for _, c := range completedCommands {
-		//fmt.Println(c.Arg, c.RunTime)
-		fmt.Println(c)
-	}
+	reportDone(completedCommands, systemRunTime)
+}
 
-	fmt.Println("OVERAL RUNTIME", systemRunTime)
+type Results struct {
+	Commands CommandList
+	Info     map[string]string
+}
+
+func reportDone(completedCommands CommandList, systemRunTime time.Duration) {
+
+	// json
+	//  top level: commands, info
+	// commands contains output from each command
+	// info contains stuff like runtime
+
+	var res = Results{}
+	res.Info = make(map[string]string)
+
+	res.Commands = completedCommands
+	res.Info["systemRunTime"] = systemRunTime.String()
+
+	//fmt.Println("all done")
+	// for _, c := range res["commands"] {
+	// 	//fmt.Println(c.Arg, c.RunTime)
+	// 	fmt.Println(c)
+	// }
+
+	results, err := json.MarshalIndent(res, "", " ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error marshaling results")
+	}
+	fmt.Println(string(results))
+
+	//fmt.Println("OVERAL RUNTIME", res.Info["systemRunTime"])
 
 }
 
@@ -85,7 +113,7 @@ func execute(ctx context.Context, c *Command) error {
 	f := strings.Fields(c.Substituted)
 	name, args := f[0], f[1:]
 
-	fmt.Println("executing", name, args, len(args))
+	//fmt.Println("executing", name, args, len(args))
 
 	cmd := exec.CommandContext(ctx, name, args...)
 
@@ -96,9 +124,12 @@ func execute(ctx context.Context, c *Command) error {
 	cmd.Stderr = &errb
 
 	err := cmd.Run()
+	c.ReturnCode = 0
 	if err != nil {
-		fmt.Println("ERROR HERE", err)
-		return err
+		if exitError, ok := err.(*exec.ExitError); ok {
+			c.ReturnCode = exitError.ExitCode()
+			return err
+		}
 	}
 
 	c.Stdout = outb.String()
@@ -119,13 +150,12 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 			tokens <- struct{}{} // ge!jt permission to start
 			c.StartTime = time.Now()
 
-			fmt.Println("running command", c.Arg)
+			//fmt.Println("running command", c.Arg)
 
 			// test: sleep for 0.1-2.6 sec
 			err := execute(ctx, c)
 			if err != nil {
-				// TODO don't panic
-				panic(fmt.Sprintf("error running command: %v %v", c.Arg, err))
+				//fmt.Fprintf(os.Stderr, "error running command: %v %v\n", c.Arg, err)
 			}
 			c.EndTime = time.Now()
 			rt := c.EndTime.Sub(c.StartTime)
@@ -135,11 +165,6 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 			}
 			c.RunTime = a.String()
 
-			//fmt.Println("in gofunc, command is done", c.Host, "runtime", c.RunTime)
-
-			// wtf StartTime ends up print ok but not EndTime
-
-			//fmt.Println(c)
 			done <- c // report status.
 			<-tokens  // return token when done.
 		}()
@@ -161,8 +186,7 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 			} // otherwise flags.All so don't exit loop
 
 			if len(completedCommands) == len(cmdList) {
-				fmt.Println("ALL", len(cmdList), "COMMANDS DONE")
-				//os.Exit(0) // TODO better
+				//fmt.Println("ALL", len(cmdList), "COMMANDS DONE")
 				return completedCommands
 			}
 		case <-ctx.Done():
@@ -180,7 +204,7 @@ func buildListOfCommands(command string, hosts []string) (CommandList, error) {
 		x := Command{}
 		x.Original = command
 		x.Arg = host
-		x.Substituted = strings.ReplaceAll(command, "{{ arg }}", host)
+		x.Substituted = strings.ReplaceAll(command, "{{1}}", host)
 
 		ret = append(ret, &x)
 	}
