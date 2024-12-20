@@ -18,3 +18,7 @@ next:
   focus on output formatting and cleanup
   reorg infra.go to smaller functions?
   and how the hell do I test this?
+
+  logging/debug is a weird mess.  try https://betterstack.com/community/guides/logging/logging-in-go/
+
+  
