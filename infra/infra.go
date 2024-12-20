@@ -33,8 +33,6 @@ func (c Command) String() string {
 	 `, c.Original, c.Substituted, c.Stdout, c.Stdin)
 }
 
-var wg sync.WaitGroup
-
 func Do(command string, hosts []string, flags Flags) {
 	// do all the heavy lifting here
 
@@ -57,30 +55,38 @@ func Do(command string, hosts []string, flags Flags) {
 	// go run the things
 
 	if flags.All {
-		do_all(cmdList)
+		do_all(cmdList, flags)
 	} else if flags.Any {
-		do_any(cmdList)
+		do_any(cmdList, flags)
 	}
 }
 
-// done
+func do_all(cmdList CommandList, flags Flags) {
+	//fmt.Println("in do_all with", cmdList)
 
-// 	for _, x := range cmdList.Commands {
-// 		wg.Add(1)
-// 		go func(Command) {
-// 			defer wg.Done()
-// 			fmt.Printf("%+v\n", x)
-// 		}(x)
-// 	}
+	var wg sync.WaitGroup
+	var tokens = make(chan struct{}, flags.Concurrent)
+	for _, x := range cmdList.Commands {
+		wg.Add(1)
 
-// 	wg.Wait()
-// }
-
-func do_all(cmdList CommandList) {
-	fmt.Println("in do_all with", cmdList)
+		go func(Command) {
+			defer wg.Done()
+			tokens <- struct{}{}
+			run_command(x)
+			//fmt.Printf("%+v\n", x)
+			<-tokens
+		}(x)
+	}
+	wg.Wait()
 }
 
-func do_any(cmdList CommandList) {
+func run_command(c Command) {
+	// TODO
+	fmt.Println("running command", c)
+}
+
+func do_any(cmdList CommandList, flags Flags) {
+	// TODO
 	fmt.Println("in do_any with", cmdList)
 }
 
