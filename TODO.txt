@@ -19,3 +19,4 @@ next:
   actually run shell commands
   focus on output formatting and cleanup
   reorg infra.go to smaller functions?
+  and how the hell do I test this?
