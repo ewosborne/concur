@@ -26,12 +26,7 @@ type Flags struct {
 	Timeout         int64
 }
 
-// is this worth it?  Maybe for a String() method?
-// doing away with it for now
-
-// type CommandList struct {
-// 	Commands []*Command
-// }
+type CommandList = []*Command
 
 func (c Command) String() string {
 	return fmt.Sprintf(`
@@ -83,12 +78,12 @@ func Do(command string, hosts []string, flags Flags) {
 
 }
 
-func start_command_loop(ctx context.Context, cmdList []*Command, flags Flags) []*Command {
+func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) CommandList {
 	//fmt.Println("in start_command_loop with", cmdList)
 
 	var tokens = make(chan struct{}, flags.ConcurrentLimit)
-	var done = make(chan *Command)   // where a command goes when it's done
-	var completedCommands []*Command // count all the done processes
+	var done = make(chan *Command)    // where a command goes when it's done
+	var completedCommands CommandList // count all the done processes
 
 	// launch each command
 	for _, c := range cmdList {
@@ -138,12 +133,12 @@ func start_command_loop(ctx context.Context, cmdList []*Command, flags Flags) []
 	}
 }
 
-func buildListOfCommands(command string, hosts []string) ([]*Command, error) {
+func buildListOfCommands(command string, hosts []string) (CommandList, error) {
 	// TODO I don't need a full template engine but should probably have something cooler than this.
 
 	// TODO random shuffle
 
-	var ret []*Command
+	var ret CommandList
 	for _, host := range hosts {
 		x := Command{}
 		x.Original = command
