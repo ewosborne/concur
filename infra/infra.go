@@ -30,6 +30,7 @@ type Flags struct {
 	ConcurrentLimit int
 	Timeout         int64
 	Token           string
+	FlagErrors      bool
 }
 
 type CommandList []*Command
@@ -40,9 +41,12 @@ func (c Command) String() string {
 
 }
 
+var flagErrors bool
+
 func Do(command string, substituteArgs []string, flags Flags) {
 	// do all the heavy lifting here
 
+	flagErrors = flags.FlagErrors
 	systemStartTime := time.Now()
 
 	// TODO: pass flags in as float in seconds, convert to integer msec
@@ -91,6 +95,15 @@ func reportDone(completedCommands CommandList, systemRunTime time.Duration) {
 	fmt.Println(string(results))
 
 	//fmt.Println("OVERAL RUNTIME", res.Info["systemRunTime"])
+
+	if flagErrors {
+		for _, c := range res.Commands {
+			if c.ReturnCode != 0 {
+				// TODO better format?
+				fmt.Fprintf(os.Stderr, "command %v exited with error code %v\n", c.Substituted, c.ReturnCode)
+			}
+		}
+	}
 
 }
 
