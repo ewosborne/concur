@@ -11,15 +11,15 @@ import (
 )
 
 type Command struct {
-	Original    string        `json:"original"`
-	Substituted string        `json:"substituted"`
-	Arg         string        `json:"arg"`
-	Stdout      string        `json:"stdout"`
-	Stdin       string        `json:"stdin"`
-	Stderr      string        `json:"stderr"`
-	StartTime   time.Time     `json:"starttime"`
-	EndTime     time.Time     `json:"endtime"`
-	RunTime     time.Duration `json:"runtime"`
+	Original    string    `json:"original"`
+	Substituted string    `json:"substituted"`
+	Arg         string    `json:"arg"`
+	Stdout      string    `json:"stdout"`
+	Stdin       string    `json:"stdin"`
+	Stderr      string    `json:"stderr"`
+	StartTime   time.Time `json:"starttime"`
+	EndTime     time.Time `json:"endtime"`
+	RunTime     string    `json:"runtime"`
 }
 
 type Flags struct {
@@ -32,7 +32,7 @@ type Flags struct {
 type CommandList []*Command
 
 func (c Command) String() string {
-	b, _ := json.MarshalIndent(c, "", " ")
+	b, _ := json.MarshalIndent(c, "", " ") // TODO clean this up, particularly RunTime
 	return string(b)
 
 }
@@ -71,26 +71,13 @@ func Do(command string, hosts []string, flags Flags) {
 
 	//fmt.Println("all done")
 	for _, c := range completedCommands {
-		fmt.Println(c.Arg, c.RunTime)
+		//fmt.Println(c.Arg, c.RunTime)
+		fmt.Println(c)
 	}
 
 	fmt.Println("OVERAL RUNTIME", systemRunTime)
 
 }
-
-// cc := exec.CommandContext(ctx, c.program, c.args...)
-
-// output, err := cc.CombinedOutput()
-
-// c.end = time.Now()
-// c.duration = time.Since(c.start)
-// c.output = string(output)
-
-// if err != nil {
-// 	if exitError, ok := err.(*exec.ExitError); ok {
-// 		c.exit = exitError.ExitCode()
-// 	}
-// }
 
 func execute(ctx context.Context, c *Command) error {
 
@@ -104,9 +91,7 @@ func execute(ctx context.Context, c *Command) error {
 
 	// TODO test stderr, make sure this works ok.
 
-	//var inb, outb, errb bytes.Buffer
 	var outb, errb strings.Builder
-	//cmd.Stdin = &inb
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
 
@@ -116,25 +101,8 @@ func execute(ctx context.Context, c *Command) error {
 		return err
 	}
 
-	/*
-			var outb, errb bytes.Buffer
-		cmd.Stdout = &outb
-		cmd.Stderr = &errb
-		err := cmd.Run()
-	*/
-
-	// TODO put all this in the struct and then in json
 	c.Stdout = outb.String()
 	c.Stderr = errb.String()
-
-	// fmt.Println("command:", name, args)
-	// fmt.Println("stdout:", c.Stdout, ":")
-	// fmt.Println("stderr:", c.Stderr, ":")
-	// fmt.Println("that's all")
-
-	//time.Sleep(time.Duration(rand.Intn(2500)) * time.Millisecond)
-	//time.Sleep(time.Duration(100 * time.Millisecond))
-
 	return nil
 }
 
@@ -160,13 +128,18 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 				panic(fmt.Sprintf("error running command: %v %v", c.Arg, err))
 			}
 			c.EndTime = time.Now()
-			c.RunTime = c.EndTime.Sub(c.StartTime)
+			rt := c.EndTime.Sub(c.StartTime)
+			a, err := time.ParseDuration(rt.String())
+			if err != nil {
+				panic(err) // TODO
+			}
+			c.RunTime = a.String()
 
 			//fmt.Println("in gofunc, command is done", c.Host, "runtime", c.RunTime)
 
 			// wtf StartTime ends up print ok but not EndTime
 
-			fmt.Println(c)
+			//fmt.Println(c)
 			done <- c // report status.
 			<-tokens  // return token when done.
 		}()
