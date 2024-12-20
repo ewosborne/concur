@@ -59,11 +59,6 @@ func Do(command string, hosts []string, flags Flags) {
 	fmt.Println("hosts", hosts, len(hosts))
 	fmt.Printf("flags %+v\n", flags)
 
-	// sanitize any vs. all until I can figure flag groups TODO
-	if !flags.All && !flags.Any {
-		flags.All = true
-	}
-
 	// build a list of commands
 	// TODO maybe cmdList is a list of pointers to commands?
 	cmdList, err := buildListOfCommands(command, hosts)
@@ -83,7 +78,7 @@ func Do(command string, hosts []string, flags Flags) {
 		fmt.Println(c.Host, c.RunTime)
 	}
 
-	fmt.Println("OVERAL START/END/RUN", startTime, endTime, runTime)
+	fmt.Println("OVERAL RUNTIME", runTime)
 
 }
 
@@ -102,8 +97,10 @@ func start_command_loop(ctx context.Context, cmdList []*Command, flags Flags) []
 			c.StartTime = time.Now()
 
 			fmt.Println("running command", c.Host)
-			time.Sleep(time.Duration(rand.Intn(1500)) * time.Millisecond)
-			time.Sleep(time.Duration(1 * time.Second))
+
+			// test: sleep for 0.1-2.6 sec
+			time.Sleep(time.Duration(rand.Intn(2500)) * time.Millisecond)
+			time.Sleep(time.Duration(100 * time.Millisecond))
 			c.EndTime = time.Now()
 			c.RunTime = c.EndTime.Sub(c.StartTime)
 			//fmt.Println(" after", c)
@@ -143,6 +140,8 @@ func start_command_loop(ctx context.Context, cmdList []*Command, flags Flags) []
 func buildListOfCommands(command string, hosts []string) ([]*Command, error) {
 	// TODO I don't need a full template engine but should probably have something cooler than this.
 
+	// TODO random shuffle
+
 	var ret []*Command
 	for _, host := range hosts {
 		x := Command{}
@@ -152,5 +151,12 @@ func buildListOfCommands(command string, hosts []string) ([]*Command, error) {
 
 		ret = append(ret, &x)
 	}
+
+	// mix them up just so there's no ordering depedency if they all take the same time. otherwise the first one in the list
+	//   tends to be the one we return first with --any.
+	rand.Shuffle(len(ret), func(i, j int) {
+		ret[i], ret[j] = ret[j], ret[i]
+	})
+
 	return ret, nil
 }
