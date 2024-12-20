@@ -12,16 +12,16 @@ import (
 )
 
 type Command struct {
-	Original    string    `json:"original"`
-	Substituted string    `json:"substituted"`
-	Arg         string    `json:"arg"`
-	Stdout      string    `json:"stdout"`
-	Stdin       string    `json:"stdin"`
-	Stderr      string    `json:"stderr"`
-	StartTime   time.Time `json:"starttime"`
-	EndTime     time.Time `json:"endtime"`
-	RunTime     string    `json:"runtime"`
-	ReturnCode  int       `json:"returncode"`
+	Original    string   `json:"original"`
+	Substituted string   `json:"substituted"`
+	Arg         string   `json:"arg"`
+	Stdout      []string `json:"stdout"`
+	//Stdin       string    `json:"stdin"`
+	Stderr     []string  `json:"stderr"`
+	StartTime  time.Time `json:"starttime"`
+	EndTime    time.Time `json:"endtime"`
+	RunTime    string    `json:"runtime"`
+	ReturnCode int       `json:"returncode"`
 }
 
 type Flags struct {
@@ -118,8 +118,8 @@ func execute(ctx context.Context, c *Command) error {
 		}
 	}
 
-	c.Stdout = outb.String()
-	c.Stderr = errb.String()
+	c.Stdout = strings.Split(outb.String(), "\n")
+	c.Stderr = strings.Split(errb.String(), "\n")
 	return nil
 }
 
@@ -166,7 +166,7 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 			//fmt.Println(c.Host, "command is done")
 
 			if flags.Any {
-				fmt.Println("first command returned, exiting")
+				//fmt.Println("first command returned, exiting")
 				//os.Exit(0) // TODO just return or something
 				return completedCommands
 			} // otherwise flags.All so don't exit loop
