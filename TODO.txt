@@ -3,7 +3,6 @@ command structure:
 
 concur "command to run" ..list of hosts to run against...  --flags
 
-variable interpolation in the command to run - the host, but what else?
 
 flags
  any vs all
@@ -16,7 +15,6 @@ flags
 
 
 next:
-  actually run shell commands
   focus on output formatting and cleanup
   reorg infra.go to smaller functions?
   and how the hell do I test this?
