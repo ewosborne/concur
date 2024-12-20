@@ -2,13 +2,16 @@ package infra
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Command struct {
 	Original    string
 	Substituted string
+	Host        string
 	Stdout      string // placeholder
 	Stdin       string // placeholder
 }
@@ -82,12 +85,35 @@ func do_all(cmdList CommandList, flags Flags) {
 
 func run_command(c Command) {
 	// TODO
+	time.Sleep(time.Duration(rand.Intn(500)) * time.Millisecond)
 	fmt.Println("running command", c)
 }
 
 func do_any(cmdList CommandList, flags Flags) {
 	// TODO
-	fmt.Println("in do_any with", cmdList)
+	//fmt.Println("in do_any with", cmdList)
+
+	var wg sync.WaitGroup
+	var tokens = make(chan struct{}, flags.Concurrent)
+	var single = make(chan Command)
+
+	// launch everything
+	for _, x := range cmdList.Commands {
+		wg.Add(1)
+
+		go func(Command) {
+			defer wg.Done()
+			tokens <- struct{}{}
+			run_command(x)
+			<-tokens
+			single <- x
+		}(x)
+	}
+
+	// wait for the first one to finish
+	cc := <-single
+	fmt.Println("execution host", cc.Host)
+
 }
 
 func buildListOfCommands(command string, hosts []string) (CommandList, error) {
@@ -97,7 +123,9 @@ func buildListOfCommands(command string, hosts []string) (CommandList, error) {
 	for _, host := range hosts {
 		x := Command{}
 		x.Original = command
+		x.Host = host
 		x.Substituted = strings.ReplaceAll(command, "{{ host }}", host)
+
 		ret.Commands = append(ret.Commands, x)
 	}
 	return ret, nil
