@@ -28,6 +28,8 @@ type Flags struct {
 
 type CommandList []*Command
 
+// TODO I tried to add to c.Start() and End() methods to set runtime but they zeroed out, not sure why.
+
 func (c Command) String() string {
 	return fmt.Sprintf(`
 	 Original:%v
