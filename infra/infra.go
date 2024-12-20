@@ -1,9 +1,11 @@
 package infra
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/rand"
+	"os/exec"
 	"strings"
 	"time"
 )
@@ -14,6 +16,7 @@ type Command struct {
 	Host        string
 	Stdout      string // placeholder
 	Stdin       string // placeholder
+	Stderr      string // placeholder
 	StartTime   time.Time
 	EndTime     time.Time
 	RunTime     time.Duration
@@ -83,6 +86,65 @@ func Do(command string, hosts []string, flags Flags) {
 
 }
 
+// cc := exec.CommandContext(ctx, c.program, c.args...)
+
+// output, err := cc.CombinedOutput()
+
+// c.end = time.Now()
+// c.duration = time.Since(c.start)
+// c.output = string(output)
+
+// if err != nil {
+// 	if exitError, ok := err.(*exec.ExitError); ok {
+// 		c.exit = exitError.ExitCode()
+// 	}
+// }
+
+func execute(ctx context.Context, c *Command) error {
+
+	// TODO deal with breaking this into the command to run and its arguments
+	f := strings.Fields(c.Substituted)
+	name, args := f[0], f[1:]
+
+	fmt.Println("executing", name, args, len(args))
+
+	cmd := exec.CommandContext(ctx, name, args...)
+
+	// TODO test stderr, make sure this works ok.
+
+	var inb, outb, errb bytes.Buffer
+	cmd.Stdin = &inb
+	cmd.Stdout = &outb
+	cmd.Stderr = &errb
+
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	/*
+			var outb, errb bytes.Buffer
+		cmd.Stdout = &outb
+		cmd.Stderr = &errb
+		err := cmd.Run()
+	*/
+
+	// TODO put all this in the struct and then in json
+	//c.Stdout = string(cmd.Stdout)
+
+	fmt.Printf("type %T\n", cmd.Stdout) // why is this bytes.Buffer and not io.Writer?
+	fmt.Println("command:", name, args)
+	fmt.Println("stdin:", cmd.Stdin, ":")
+	fmt.Println("stdout:", cmd.Stdout, ":")
+	fmt.Println("stderr:", cmd.Stderr, ":")
+	fmt.Println("that's all")
+
+	//time.Sleep(time.Duration(rand.Intn(2500)) * time.Millisecond)
+	//time.Sleep(time.Duration(100 * time.Millisecond))
+
+	return nil
+}
+
 func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) CommandList {
 
 	var tokens = make(chan struct{}, flags.ConcurrentLimit) // permission to run
@@ -99,8 +161,7 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 			fmt.Println("running command", c.Host)
 
 			// test: sleep for 0.1-2.6 sec
-			time.Sleep(time.Duration(rand.Intn(2500)) * time.Millisecond)
-			time.Sleep(time.Duration(100 * time.Millisecond))
+			execute(ctx, c)
 			c.EndTime = time.Now()
 			c.RunTime = c.EndTime.Sub(c.StartTime)
 			//fmt.Println("in gofunc, command is done", c.Host, "runtime", c.RunTime)
