@@ -1,7 +1,6 @@
 package infra
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"math/rand"
@@ -112,8 +111,9 @@ func execute(ctx context.Context, c *Command) error {
 
 	// TODO test stderr, make sure this works ok.
 
-	var inb, outb, errb bytes.Buffer
-	cmd.Stdin = &inb
+	//var inb, outb, errb bytes.Buffer
+	var outb, errb strings.Builder
+	//cmd.Stdin = &inb
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
 
@@ -130,11 +130,10 @@ func execute(ctx context.Context, c *Command) error {
 	*/
 
 	// TODO put all this in the struct and then in json
-	//c.Stdout = string(cmd.Stdout)
+	// c.Stdout = string(cmd.Stdout)
 
 	fmt.Printf("type %T\n", cmd.Stdout) // why is this bytes.Buffer and not io.Writer?
 	fmt.Println("command:", name, args)
-	fmt.Println("stdin:", cmd.Stdin, ":")
 	fmt.Println("stdout:", cmd.Stdout, ":")
 	fmt.Println("stderr:", cmd.Stderr, ":")
 	fmt.Println("that's all")
