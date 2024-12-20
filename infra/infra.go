@@ -29,6 +29,7 @@ type Flags struct {
 	All             bool
 	ConcurrentLimit int
 	Timeout         int64
+	Token           string
 }
 
 type CommandList []*Command
@@ -55,7 +56,7 @@ func Do(command string, substituteArgs []string, flags Flags) {
 	//fmt.Printf("flags %+v\n", flags)
 
 	// build a list of commands
-	cmdList, err := buildListOfCommands(command, substituteArgs)
+	cmdList, err := buildListOfCommands(command, substituteArgs, flags.Token)
 	if err != nil {
 		panic(err) // TODO fix
 	}
@@ -182,7 +183,7 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 	}
 }
 
-func buildListOfCommands(command string, hosts []string) (CommandList, error) {
+func buildListOfCommands(command string, hosts []string, token string) (CommandList, error) {
 	// TODO I don't need a full template engine but should probably have something cooler than this.
 
 	var ret CommandList
@@ -190,7 +191,7 @@ func buildListOfCommands(command string, hosts []string) (CommandList, error) {
 		x := Command{}
 		x.Original = command
 		x.Arg = host
-		x.Substituted = strings.ReplaceAll(command, "{{1}}", host)
+		x.Substituted = strings.ReplaceAll(command, token, host)
 
 		ret = append(ret, &x)
 	}

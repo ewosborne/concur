@@ -45,6 +45,7 @@ func populateFlags(cmd *cobra.Command) infra.Flags {
 	flags.Any, _ = cmd.Flags().GetBool("any")
 	flags.ConcurrentLimit, _ = cmd.Flags().GetInt("concurrent")
 	flags.Timeout, _ = cmd.Flags().GetInt64("timeout")
+	flags.Token, _ = cmd.Flags().GetString("token")
 	return flags
 }
 
@@ -62,6 +63,7 @@ func init() {
 
 	rootCmd.Flags().IntP("concurrent", "c", 128, "Number of concurrent processes (0 = no limit)")
 	rootCmd.Flags().Int64P("timeout", "t", 90_000, "Timeout in msec (0 for no timeout)")
+	rootCmd.Flags().StringP("token", "", "{{1}}", "Token to match for replacement")
 	rootCmd.PersistentFlags().BoolVarP(&enableDebug, "debug", "d", os.Getenv("DEBUG") == "true", "Enable debug mode")
 
 	debugLogger = log.New(os.Stdout, "DEBUG: ", log.Ldate|log.Ltime)
