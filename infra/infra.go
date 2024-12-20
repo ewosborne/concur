@@ -31,20 +31,6 @@ type Flags struct {
 
 type CommandList []*Command
 
-// TODO I tried to add to c.Start() and End() methods to set runtime but they zeroed out, not sure why.
-
-// func (c Command) String() string {
-// 	return fmt.Sprintf(`
-// 	 Original:%v
-// 	 Substituted:%v
-// 	 Stdout:%v
-// 	 Stdin:%v
-// 	 StartTime: %v
-// 	 EndTime: %v
-// 	 RunTime: %v
-// 	 `, c.Original, c.Substituted, c.Stdout, c.Stdin, c.StartTime, c.EndTime, c.RunTime)
-// }
-
 func (c Command) String() string {
 	b, _ := json.MarshalIndent(c, "", " ")
 	return string(b)
@@ -141,12 +127,11 @@ func execute(ctx context.Context, c *Command) error {
 	c.Stdout = outb.String()
 	c.Stderr = errb.String()
 
-	fmt.Println("command:", name, args)
-	fmt.Println("stdout:", c.Stdout, ":")
-	fmt.Println("stderr:", c.Stderr, ":")
-	fmt.Println("that's all")
+	// fmt.Println("command:", name, args)
+	// fmt.Println("stdout:", c.Stdout, ":")
+	// fmt.Println("stderr:", c.Stderr, ":")
+	// fmt.Println("that's all")
 
-	fmt.Println(c)
 	//time.Sleep(time.Duration(rand.Intn(2500)) * time.Millisecond)
 	//time.Sleep(time.Duration(100 * time.Millisecond))
 
@@ -163,7 +148,7 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 	for _, c := range cmdList {
 
 		go func() {
-			tokens <- struct{}{} // get permission to start
+			tokens <- struct{}{} // ge!jt permission to start
 			c.StartTime = time.Now()
 
 			fmt.Println("running command", c.Arg)
@@ -176,7 +161,12 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 			}
 			c.EndTime = time.Now()
 			c.RunTime = c.EndTime.Sub(c.StartTime)
+
 			//fmt.Println("in gofunc, command is done", c.Host, "runtime", c.RunTime)
+
+			// wtf StartTime ends up print ok but not EndTime
+
+			fmt.Println(c)
 			done <- c // report status.
 			<-tokens  // return token when done.
 		}()
