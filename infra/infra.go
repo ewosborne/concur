@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -49,12 +50,20 @@ func Do(command string, substituteArgs []string, flags Flags) {
 	flagErrors = flags.FlagErrors
 	systemStartTime := time.Now()
 
+	//slog.Info("is this a default?")
+
 	// TODO: pass flags in as float in seconds, convert to integer msec
 	//fmt.Println("flags is", flags.Timeout)
 	t := time.Duration(flags.Timeout) * time.Millisecond
 	//fmt.Println("timeout", t)
 	ctx, cancelCtx := context.WithTimeout(context.Background(), t)
 	defer cancelCtx()
+
+	slog.Info("info")
+	slog.Debug("debug")
+	slog.Warn("warn")
+	slog.Error("error")
+	slog.Log(ctx, slog.LevelInfo, "second info")
 
 	//fmt.Println("args", substituteArgs, len(substituteArgs))
 	//fmt.Printf("flags %+v\n", flags)
