@@ -29,6 +29,8 @@ type Flags struct {
 	All             bool
 	ConcurrentLimit int
 	Timeout         int64
+	Token           string
+	FlagErrors      bool
 }
 
 type CommandList []*Command
@@ -39,9 +41,12 @@ func (c Command) String() string {
 
 }
 
+var flagErrors bool
+
 func Do(command string, substituteArgs []string, flags Flags) {
 	// do all the heavy lifting here
 
+	flagErrors = flags.FlagErrors
 	systemStartTime := time.Now()
 
 	// TODO: pass flags in as float in seconds, convert to integer msec
@@ -55,7 +60,7 @@ func Do(command string, substituteArgs []string, flags Flags) {
 	//fmt.Printf("flags %+v\n", flags)
 
 	// build a list of commands
-	cmdList, err := buildListOfCommands(command, substituteArgs)
+	cmdList, err := buildListOfCommands(command, substituteArgs, flags.Token)
 	if err != nil {
 		panic(err) // TODO fix
 	}
@@ -90,6 +95,15 @@ func reportDone(completedCommands CommandList, systemRunTime time.Duration) {
 	fmt.Println(string(results))
 
 	//fmt.Println("OVERAL RUNTIME", res.Info["systemRunTime"])
+
+	if flagErrors {
+		for _, c := range res.Commands {
+			if c.ReturnCode != 0 {
+				// TODO better format?
+				fmt.Fprintf(os.Stderr, "command %v exited with error code %v\n", c.Substituted, c.ReturnCode)
+			}
+		}
+	}
 
 }
 
@@ -182,7 +196,7 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 	}
 }
 
-func buildListOfCommands(command string, hosts []string) (CommandList, error) {
+func buildListOfCommands(command string, hosts []string, token string) (CommandList, error) {
 	// TODO I don't need a full template engine but should probably have something cooler than this.
 
 	var ret CommandList
@@ -190,7 +204,7 @@ func buildListOfCommands(command string, hosts []string) (CommandList, error) {
 		x := Command{}
 		x.Original = command
 		x.Arg = host
-		x.Substituted = strings.ReplaceAll(command, "{{1}}", host)
+		x.Substituted = strings.ReplaceAll(command, token, host)
 
 		ret = append(ret, &x)
 	}
