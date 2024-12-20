@@ -41,7 +41,14 @@ clean:
 install: mac
     cp ./$bin ~/bin/
 
-release arg1: testv
+require-env:
+    #!/usr/bin/env sh
+    if [ -z "${GITHUB_TOKEN:-}" ]; then
+        echo "Error: GITHUB_TOKEN environment variable is not set"
+        exit 1
+    fi
+
+release arg1: require-env testv
    rm -rf dist/
    git tag {{ arg1 }}
    git push origin {{ arg1 }}
