@@ -41,10 +41,7 @@ func (c Command) String() string {
 
 func Do(command string, substituteArgs []string, flags Flags) {
 	// do all the heavy lifting here
-	if len(substituteArgs) < 1 {
-		fmt.Fprintf(os.Stderr, "ERROR: no arguments provided")
-		os.Exit(1)
-	}
+
 	systemStartTime := time.Now()
 
 	// TODO: pass flags in as float in seconds, convert to integer msec
@@ -74,28 +71,17 @@ func Do(command string, substituteArgs []string, flags Flags) {
 }
 
 type Results struct {
-	Commands CommandList
-	Info     map[string]string
+	Commands CommandList       `json:"commands"`
+	Info     map[string]string `json:"info"`
 }
 
 func reportDone(completedCommands CommandList, systemRunTime time.Duration) {
-
-	// json
-	//  top level: commands, info
-	// commands contains output from each command
-	// info contains stuff like runtime
 
 	var res = Results{}
 	res.Info = make(map[string]string)
 
 	res.Commands = completedCommands
 	res.Info["systemRunTime"] = systemRunTime.String()
-
-	//fmt.Println("all done")
-	// for _, c := range res["commands"] {
-	// 	//fmt.Println(c.Arg, c.RunTime)
-	// 	fmt.Println(c)
-	// }
 
 	results, err := json.MarshalIndent(res, "", " ")
 	if err != nil {

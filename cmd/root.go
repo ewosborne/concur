@@ -4,12 +4,17 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"io"
+	"log"
 	"os"
 
 	"github.com/ewosborne/concur/infra"
 
 	"github.com/spf13/cobra"
 )
+
+var debugLogger *log.Logger
+var enableDebug bool
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -20,20 +25,27 @@ var rootCmd = &cobra.Command{
 
 func ConcurCmdE(cmd *cobra.Command, args []string) error {
 
+	switch len(args) {
+	case 0, 1: // 0 == command name only, 1 == string to run in but nothing to sub into it
+		cmd.Help()
+		os.Exit(1)
+	}
+
 	command := args[0]
 	opts := args[1:]
-	flags := infra.Flags{}
+	flags := populateFlags(cmd)
 
+	infra.Do(command, opts, flags)
+	return nil
+}
+
+func populateFlags(cmd *cobra.Command) infra.Flags {
+	flags := infra.Flags{}
 	// I sure wish there was a cleaner way to do this
 	flags.Any, _ = cmd.Flags().GetBool("any")
 	flags.ConcurrentLimit, _ = cmd.Flags().GetInt("concurrent")
 	flags.Timeout, _ = cmd.Flags().GetInt64("timeout")
-
-	// does this make it easier?
-	//flags.All = !flags.Any
-
-	infra.Do(command, opts, flags)
-	return nil
+	return flags
 }
 
 func Execute() {
@@ -50,4 +62,20 @@ func init() {
 
 	rootCmd.Flags().IntP("concurrent", "c", 128, "Number of concurrent processes (0 = no limit)")
 	rootCmd.Flags().Int64P("timeout", "t", 90_000, "Timeout in msec (0 for no timeout)")
+	rootCmd.PersistentFlags().BoolVarP(&enableDebug, "debug", "d", os.Getenv("DEBUG") == "true", "Enable debug mode")
+
+	debugLogger = log.New(os.Stdout, "DEBUG: ", log.Ldate|log.Ltime)
+
+	// need PreRun because flags aren't parsed until a command is run.
+	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		if enableDebug {
+			debugLogger.SetOutput(os.Stderr)
+		} else {
+			debugLogger.SetOutput(io.Discard)
+		}
+	}
+}
+
+func SetVersionInfo(version string) {
+	rootCmd.Version = version
 }

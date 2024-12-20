@@ -15,7 +15,8 @@ coverage:
 
 build:
     goreleaser build --single-target --snapshot --clean
-    ln -fs dist/{{ bin }}_darwin_arm64_v8.0/{{ bin }} ./$bin
+    #ln -fs dist/{{ bin }}_darwin_arm64_v8.0/{{ bin }} ./$bin
+    cp dist/{{ bin }}_darwin_arm64_v8.0/{{ bin }} .
 
 test:
     go test ./cmd
@@ -28,9 +29,8 @@ fmt:
     goimports -l -w .
     go fmt
 
-mac: test
-    goreleaser build --single-target --snapshot --clean
-    ln -fs dist/adctl_darwin_arm64_v8.0/adctl ./$bin
+mac: test build
+
 
 clean:
     go clean -testcache
