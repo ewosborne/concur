@@ -56,5 +56,5 @@ func init() {
 	rootCmd.MarkFlagsOneRequired("any", "all") // TODO this isn't quite what I want.
 
 	rootCmd.Flags().IntP("concurrent", "c", 128, "Number of concurrent processes (0 = no limit)")
-	rootCmd.Flags().Int64P("timeout", "t", 90, "Timeout in seconds (0 for no timeout)")
+	rootCmd.Flags().Int64P("timeout", "t", 90_000, "Timeout in msec (0 for no timeout)")
 }
