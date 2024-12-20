@@ -60,7 +60,7 @@ func Do(command string, hosts []string, flags Flags) {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), t)
 	defer cancelCtx()
 
-	fmt.Println("hosts", hosts, len(hosts))
+	fmt.Println("args", hosts, len(hosts))
 	fmt.Printf("flags %+v\n", flags)
 
 	// build a list of commands
@@ -119,6 +119,7 @@ func execute(ctx context.Context, c *Command) error {
 
 	err := cmd.Run()
 	if err != nil {
+		fmt.Println("ERROR HERE", err)
 		return err
 	}
 
@@ -130,12 +131,13 @@ func execute(ctx context.Context, c *Command) error {
 	*/
 
 	// TODO put all this in the struct and then in json
-	// c.Stdout = string(cmd.Stdout)
+	c.Stdout = outb.String()
+	c.Stderr = errb.String()
 
 	fmt.Printf("type %T\n", cmd.Stdout) // why is this bytes.Buffer and not io.Writer?
 	fmt.Println("command:", name, args)
-	fmt.Println("stdout:", cmd.Stdout, ":")
-	fmt.Println("stderr:", cmd.Stderr, ":")
+	fmt.Println("stdout:", c.Stdout, ":")
+	fmt.Println("stderr:", c.Stderr, ":")
 	fmt.Println("that's all")
 
 	//time.Sleep(time.Duration(rand.Intn(2500)) * time.Millisecond)
@@ -160,7 +162,11 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 			fmt.Println("running command", c.Host)
 
 			// test: sleep for 0.1-2.6 sec
-			execute(ctx, c)
+			err := execute(ctx, c)
+			if err != nil {
+				// TODO don't panic
+				panic(fmt.Sprintf("error running command: %v %v", c.Host, err))
+			}
 			c.EndTime = time.Now()
 			c.RunTime = c.EndTime.Sub(c.StartTime)
 			//fmt.Println("in gofunc, command is done", c.Host, "runtime", c.RunTime)
