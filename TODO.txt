@@ -11,3 +11,5 @@ flags
  timeout
  num procs, 0 for infinite. default 128.
 
+
+* can I just add flags and args to a context?  is that what they're for?
