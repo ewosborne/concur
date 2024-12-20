@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -15,13 +14,16 @@ type Command struct {
 	Host        string
 	Stdout      string // placeholder
 	Stdin       string // placeholder
+	StartTime   time.Time
+	EndTime     time.Time
+	RunTime     time.Duration
 }
 
 type Flags struct {
-	Any        bool
-	All        bool
-	Concurrent int
-	Timeout    int64
+	Any             bool
+	All             bool
+	ConcurrentLimit int
+	Timeout         int64
 }
 
 // is this worth it?  Maybe for a String() method?
@@ -31,27 +33,24 @@ type CommandList struct {
 
 func (c Command) String() string {
 	return fmt.Sprintf(`
-	 Original:%s
-	 Substituted:%s
-	 Stdout:%s
-	 Stdin:%s
-	 `, c.Original, c.Substituted, c.Stdout, c.Stdin)
+	 Original:%v
+	 Substituted:%v
+	 Stdout:%v
+	 Stdin:%v
+	 StartTime: %v
+	 EndTime: %v
+	 RunTime: %v
+	 `, c.Original, c.Substituted, c.Stdout, c.Stdin, c.StartTime, c.EndTime, c.RunTime)
 }
 
 func Do(command string, hosts []string, flags Flags) {
 	// do all the heavy lifting here
-
-	//ctx := context.TODO()
-
-	// TODO none of this works and I don't understand it but the timeout works anyways.
 	fmt.Println("flags is", flags.Timeout)
 	t := time.Duration(flags.Timeout) * time.Millisecond
 	fmt.Println("timeout", t)
 	ctx, cancelCtx := context.WithTimeout(context.Background(), t)
 	defer cancelCtx()
 
-	// fmt.Println("in infra")
-	// fmt.Println("command", command)
 	fmt.Println("hosts", hosts, len(hosts))
 	fmt.Printf("flags %+v\n", flags)
 
@@ -68,74 +67,67 @@ func Do(command string, hosts []string, flags Flags) {
 
 	// go run the things
 
-	if flags.All {
-		do_all(ctx, cmdList, flags)
-	} else if flags.Any {
-		do_any(ctx, cmdList, flags)
-	}
+	start_command_loop(ctx, cmdList, flags)
+
+	fmt.Println("all done")
 }
 
-func do_all(ctx context.Context, cmdList CommandList, flags Flags) {
-	//fmt.Println("in do_all with", cmdList)
+func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) {
+	fmt.Println("in start_command_loop with", cmdList)
 
-	var wg sync.WaitGroup
-	var tokens = make(chan struct{}, flags.Concurrent)
-	for _, x := range cmdList.Commands {
-		wg.Add(1)
+	var tokens = make(chan struct{}, flags.ConcurrentLimit)
+	var done = make(chan *Command) // where a command goes when it's done
+	var doneCounter int            // count all the done processes
 
-		go func(Command) {
-			defer wg.Done()
-			tokens <- struct{}{}
-			run_command(ctx, x)
-			//fmt.Printf("%+v\n", x)
-			select {
-			case <-tokens:
-				// do nothing?
-			case <-ctx.Done():
-				fmt.Println("context done")
+	// launch each command
+	for _, c := range cmdList.Commands {
+
+		go func() {
+			tokens <- struct{}{} // get permission to start
+			fmt.Println("running command", c.Host)
+
+			c.StartTime = time.Now()
+
+			fmt.Println("running command, before", c)
+			time.Sleep(time.Duration(rand.Intn(5)) * time.Second)
+			time.Sleep(time.Duration(1 * time.Second))
+			c.EndTime = time.Now()
+			c.RunTime = c.EndTime.Sub(c.StartTime)
+			fmt.Println(" after", c)
+
+			fmt.Println(c.Host, "TIMES", c.StartTime, c.EndTime, c.RunTime)
+
+			fmt.Println("in gofunc, command is done", c.Host, "runtime", c.RunTime)
+			done <- &c // report status
+			<-tokens   // return token when done.
+		}()
+
+	}
+
+	// TODO should break this loop out into another function I guess.
+	for {
+		select {
+		case c := <-done:
+			doneCounter += 1
+
+			fmt.Println(c.Host, "command is done")
+
+			if flags.Any {
+				fmt.Println("first command returned, exiting")
+				//os.Exit(0) // TODO just return or something
+				return
+			} // otherwise flags.All so don't exit loop
+
+			if doneCounter == len(cmdList.Commands) {
+				fmt.Println("ALL", len(cmdList.Commands), "COMMANDS DONE")
+				//os.Exit(0) // TODO better
+				return
 			}
-		}(x)
+		case <-ctx.Done():
+			msg := fmt.Sprintf("context popped, %v jobs done", doneCounter)
+			panic(msg)
+		}
 	}
-	wg.Wait()
-}
-
-func run_command(ctx context.Context, c Command) {
-	// TODO
-	time.Sleep(time.Duration(rand.Intn(2)) * time.Second)
-	fmt.Println("running command", c)
-}
-
-func do_any(ctx context.Context, cmdList CommandList, flags Flags) {
-	// TODO
-	//fmt.Println("in do_any with", cmdList)
-
-	var wg sync.WaitGroup
-	var tokens = make(chan struct{}, flags.Concurrent)
-	var single = make(chan Command)
-
-	// launch everything
-	for _, x := range cmdList.Commands {
-		wg.Add(1)
-
-		go func(Command) {
-			defer wg.Done()
-			tokens <- struct{}{}
-			run_command(ctx, x)
-			select {
-			case <-tokens:
-				// pass?
-			case <-ctx.Done():
-				fmt.Println("context done")
-				panic("gaah!") // TODO handle timeouts
-			}
-			single <- x
-		}(x)
-	}
-
-	// wait for the first one to finish
-	cc := <-single
-	fmt.Println("execution host", cc.Host)
-
 }
 
 func buildListOfCommands(command string, hosts []string) (CommandList, error) {

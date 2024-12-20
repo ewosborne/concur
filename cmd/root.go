@@ -30,7 +30,7 @@ func ConcurCmdE(cmd *cobra.Command, args []string) error {
 	// I sure wish there was a cleaner way to do this
 	flags.Any, _ = cmd.Flags().GetBool("any")
 	flags.All, _ = cmd.Flags().GetBool("all")
-	flags.Concurrent, _ = cmd.Flags().GetInt("concurrent")
+	flags.ConcurrentLimit, _ = cmd.Flags().GetInt("concurrent")
 	flags.Timeout, _ = cmd.Flags().GetInt64("timeout")
 
 	// flags := make(map[string]string)
@@ -56,5 +56,5 @@ func init() {
 	rootCmd.MarkFlagsOneRequired("any", "all") // TODO this isn't quite what I want.
 
 	rootCmd.Flags().IntP("concurrent", "c", 128, "Number of concurrent processes (0 = no limit)")
-	rootCmd.Flags().Int64P("timeout", "t", 10, "Timeout in seconds")
+	rootCmd.Flags().Int64P("timeout", "t", 90, "Timeout in seconds (0 for no timeout)")
 }
