@@ -26,7 +26,7 @@ type Flags struct {
 	Timeout         int64
 }
 
-type CommandList = []*Command
+type CommandList []*Command
 
 func (c Command) String() string {
 	return fmt.Sprintf(`
