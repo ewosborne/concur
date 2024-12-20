@@ -13,3 +13,9 @@ flags
 
 
 * can I just add flags and args to a context?  is that what they're for?
+
+
+next:
+  actually run shell commands
+  focus on output formatting and cleanup
+  reorg infra.go to smaller functions?

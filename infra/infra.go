@@ -71,9 +71,10 @@ func Do(command string, hosts []string, flags Flags) {
 
 	completedCommands := start_command_loop(ctx, cmdList, flags)
 
-	fmt.Println("all done")
 	endTime := time.Now()
 	runTime := endTime.Sub(startTime)
+
+	fmt.Println("all done")
 	for _, c := range completedCommands {
 		fmt.Println(c.Host, c.RunTime)
 	}
