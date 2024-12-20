@@ -2,6 +2,7 @@ package infra
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os/exec"
@@ -10,15 +11,15 @@ import (
 )
 
 type Command struct {
-	Original    string
-	Substituted string
-	Host        string
-	Stdout      string // placeholder
-	Stdin       string // placeholder
-	Stderr      string // placeholder
-	StartTime   time.Time
-	EndTime     time.Time
-	RunTime     time.Duration
+	Original    string        `json:"original"`
+	Substituted string        `json:"substituted"`
+	Arg         string        `json:"arg"`
+	Stdout      string        `json:"stdout"`
+	Stdin       string        `json:"stdin"`
+	Stderr      string        `json:"stderr"`
+	StartTime   time.Time     `json:"starttime"`
+	EndTime     time.Time     `json:"endtime"`
+	RunTime     time.Duration `json:"runtime"`
 }
 
 type Flags struct {
@@ -32,16 +33,22 @@ type CommandList []*Command
 
 // TODO I tried to add to c.Start() and End() methods to set runtime but they zeroed out, not sure why.
 
+// func (c Command) String() string {
+// 	return fmt.Sprintf(`
+// 	 Original:%v
+// 	 Substituted:%v
+// 	 Stdout:%v
+// 	 Stdin:%v
+// 	 StartTime: %v
+// 	 EndTime: %v
+// 	 RunTime: %v
+// 	 `, c.Original, c.Substituted, c.Stdout, c.Stdin, c.StartTime, c.EndTime, c.RunTime)
+// }
+
 func (c Command) String() string {
-	return fmt.Sprintf(`
-	 Original:%v
-	 Substituted:%v
-	 Stdout:%v
-	 Stdin:%v
-	 StartTime: %v
-	 EndTime: %v
-	 RunTime: %v
-	 `, c.Original, c.Substituted, c.Stdout, c.Stdin, c.StartTime, c.EndTime, c.RunTime)
+	b, _ := json.MarshalIndent(c, "", " ")
+	return string(b)
+
 }
 
 // wtf this results in unused write but setting it directly doesn't.  why?
@@ -78,7 +85,7 @@ func Do(command string, hosts []string, flags Flags) {
 
 	//fmt.Println("all done")
 	for _, c := range completedCommands {
-		fmt.Println(c.Host, c.RunTime)
+		fmt.Println(c.Arg, c.RunTime)
 	}
 
 	fmt.Println("OVERAL RUNTIME", systemRunTime)
@@ -134,12 +141,12 @@ func execute(ctx context.Context, c *Command) error {
 	c.Stdout = outb.String()
 	c.Stderr = errb.String()
 
-	fmt.Printf("type %T\n", cmd.Stdout) // why is this bytes.Buffer and not io.Writer?
 	fmt.Println("command:", name, args)
 	fmt.Println("stdout:", c.Stdout, ":")
 	fmt.Println("stderr:", c.Stderr, ":")
 	fmt.Println("that's all")
 
+	fmt.Println(c)
 	//time.Sleep(time.Duration(rand.Intn(2500)) * time.Millisecond)
 	//time.Sleep(time.Duration(100 * time.Millisecond))
 
@@ -159,13 +166,13 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 			tokens <- struct{}{} // get permission to start
 			c.StartTime = time.Now()
 
-			fmt.Println("running command", c.Host)
+			fmt.Println("running command", c.Arg)
 
 			// test: sleep for 0.1-2.6 sec
 			err := execute(ctx, c)
 			if err != nil {
 				// TODO don't panic
-				panic(fmt.Sprintf("error running command: %v %v", c.Host, err))
+				panic(fmt.Sprintf("error running command: %v %v", c.Arg, err))
 			}
 			c.EndTime = time.Now()
 			c.RunTime = c.EndTime.Sub(c.StartTime)
@@ -209,7 +216,7 @@ func buildListOfCommands(command string, hosts []string) (CommandList, error) {
 	for _, host := range hosts {
 		x := Command{}
 		x.Original = command
-		x.Host = host
+		x.Arg = host
 		x.Substituted = strings.ReplaceAll(command, "{{ arg }}", host)
 
 		ret = append(ret, &x)
