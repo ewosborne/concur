@@ -44,7 +44,8 @@ func Do(command string, hosts []string, flags Flags) {
 	//ctx := context.TODO()
 
 	// TODO none of this works and I don't understand it but the timeout works anyways.
-	t := time.Duration(flags.Timeout) * time.Second
+	fmt.Println("flags is", flags.Timeout)
+	t := time.Duration(flags.Timeout) * time.Millisecond
 	fmt.Println("timeout", t)
 	ctx, cancelCtx := context.WithTimeout(context.Background(), t)
 	defer cancelCtx()
@@ -100,7 +101,7 @@ func do_all(ctx context.Context, cmdList CommandList, flags Flags) {
 
 func run_command(ctx context.Context, c Command) {
 	// TODO
-	time.Sleep(time.Duration(rand.Intn(500)) * time.Millisecond)
+	time.Sleep(time.Duration(rand.Intn(2)) * time.Second)
 	fmt.Println("running command", c)
 }
 
