@@ -1,6 +1,7 @@
 package infra
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -20,6 +21,7 @@ type Flags struct {
 	Any        bool
 	All        bool
 	Concurrent int
+	Timeout    int64
 }
 
 // is this worth it?  Maybe for a String() method?
@@ -38,6 +40,14 @@ func (c Command) String() string {
 
 func Do(command string, hosts []string, flags Flags) {
 	// do all the heavy lifting here
+
+	//ctx := context.TODO()
+
+	// TODO none of this works and I don't understand it but the timeout works anyways.
+	t := time.Duration(flags.Timeout) * time.Second
+	fmt.Println("timeout", t)
+	ctx, cancelCtx := context.WithTimeout(context.Background(), t)
+	defer cancelCtx()
 
 	// fmt.Println("in infra")
 	// fmt.Println("command", command)
@@ -58,13 +68,13 @@ func Do(command string, hosts []string, flags Flags) {
 	// go run the things
 
 	if flags.All {
-		do_all(cmdList, flags)
+		do_all(ctx, cmdList, flags)
 	} else if flags.Any {
-		do_any(cmdList, flags)
+		do_any(ctx, cmdList, flags)
 	}
 }
 
-func do_all(cmdList CommandList, flags Flags) {
+func do_all(ctx context.Context, cmdList CommandList, flags Flags) {
 	//fmt.Println("in do_all with", cmdList)
 
 	var wg sync.WaitGroup
@@ -75,21 +85,26 @@ func do_all(cmdList CommandList, flags Flags) {
 		go func(Command) {
 			defer wg.Done()
 			tokens <- struct{}{}
-			run_command(x)
+			run_command(ctx, x)
 			//fmt.Printf("%+v\n", x)
-			<-tokens
+			select {
+			case <-tokens:
+				// do nothing?
+			case <-ctx.Done():
+				fmt.Println("context done")
+			}
 		}(x)
 	}
 	wg.Wait()
 }
 
-func run_command(c Command) {
+func run_command(ctx context.Context, c Command) {
 	// TODO
 	time.Sleep(time.Duration(rand.Intn(500)) * time.Millisecond)
 	fmt.Println("running command", c)
 }
 
-func do_any(cmdList CommandList, flags Flags) {
+func do_any(ctx context.Context, cmdList CommandList, flags Flags) {
 	// TODO
 	//fmt.Println("in do_any with", cmdList)
 
@@ -104,8 +119,14 @@ func do_any(cmdList CommandList, flags Flags) {
 		go func(Command) {
 			defer wg.Done()
 			tokens <- struct{}{}
-			run_command(x)
-			<-tokens
+			run_command(ctx, x)
+			select {
+			case <-tokens:
+				// pass?
+			case <-ctx.Done():
+				fmt.Println("context done")
+				panic("gaah!") // TODO handle timeouts
+			}
 			single <- x
 		}(x)
 	}

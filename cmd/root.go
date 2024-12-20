@@ -31,6 +31,7 @@ func ConcurCmdE(cmd *cobra.Command, args []string) error {
 	flags.Any, _ = cmd.Flags().GetBool("any")
 	flags.All, _ = cmd.Flags().GetBool("all")
 	flags.Concurrent, _ = cmd.Flags().GetInt("concurrent")
+	flags.Timeout, _ = cmd.Flags().GetInt64("timeout")
 
 	// flags := make(map[string]string)
 	// cmd.Flags().VisitAll(func(flag *pflag.Flag) {
@@ -55,4 +56,5 @@ func init() {
 	rootCmd.MarkFlagsOneRequired("any", "all") // TODO this isn't quite what I want.
 
 	rootCmd.Flags().IntP("concurrent", "c", 128, "Number of concurrent processes (0 = no limit)")
+	rootCmd.Flags().Float32P("timeout", "t", 10, "Timeout in seconds")
 }
