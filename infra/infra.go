@@ -124,7 +124,7 @@ func buildListOfCommands(command string, hosts []string) (CommandList, error) {
 		x := Command{}
 		x.Original = command
 		x.Host = host
-		x.Substituted = strings.ReplaceAll(command, "{{ host }}", host)
+		x.Substituted = strings.ReplaceAll(command, "{{ arg }}", host)
 
 		ret.Commands = append(ret.Commands, x)
 	}
