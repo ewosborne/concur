@@ -3,11 +3,11 @@
 
 I like what `parallel` can do.  As a network engineer, over the years I've had to do things like copy a firmware update file to a tens or low hundreds of routers, and `parallel` made it really easy.
 
-You know what I don't like about `parallel`?  It's got defaults that don't work for me (one job per core when I'm blocking on network I/O is hugely inefficient). Its CLI is convoluted (yes, it's a hard problem to solve in general, but still), it has that weird gold-digging 'I agree under penalty of death to cite parallel in any academic work', it's got a $70 manual or a 20-minute training video to teach you how to use it.  It's written in Perl.  It has this weird thing where it can't do CSV right out of the box and you have to do manual CPAN stuff.  Ain't nobody got time for any of that.
+You know what I don't like about `parallel`?  It's got defaults that don't work for me (one job per core when I'm blocking on network I/O is hugely inefficient). Its CLI is convoluted (yes, it's a hard problem to solve in general, but still), it has that weird gold-digging 'I agree under penalty of death to cite parallel in any academic work', it's got a 120-page manual or a 20-minute training video to teach you how to use it.  It's written in Perl.  It has this weird thing where it can't do CSV right out of the box and you have to do manual CPAN stuff.  Ain't nobody got time for any of that.
 
 So I give you `concur`. I'm never going to claim it's as fully featured as GNU parallel but it does the bits I need, it's less than 400 lines of go, it has sensible defaults for things which aren't compute-bound, it has easy to read json output. It can flag jobs which exit with a return code other than zero. It can run all your jobs, or it can stop when the first one teminates. It's got an easy syntax for subbing in the thing you're iterating over (each entry in a list of hosts, for example).
 
-It doesn't do as many clever thins as `parallel` but it does the subset that I want and it does them well and it does them using `go's` built-in concurrency.
+It doesn't do as many clever thins as `parallel` but it does the subset that I want and it does them well and it does them using `go's` built-in concurrency. Thus, `concur` (which also means "to happen together" or "to coincide").
 
 # usage
 
@@ -28,15 +28,17 @@ Flags:
   -v, --version            version for concur
 ````
 
-Concur takes some mandatory arguments. The first is the command you wish to run concurrently.  All subsequent arguments are whatever it is you want to change about what you run in parallel.  Here's an example which pings three different hosts:
+Concur takes some mandatory arguments. The first is the command you wish to run concurrently.  All subsequent arguments are whatever it is you want to change about what you run in parallel.
+
+Here's an example which pings three different hosts:
 
 ```
 ./concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org
 ```
 
-This runs `ping -c 1` for each of those three web sites, replacing `{{1}}` with one of the sites. It returns a JSON block to stdout, suitable for piping into `jq` or `gron`.  
+This runs `ping -c 1` for each of those three web sites, replacing `{{1}}` with each in turn. It returns a JSON block to stdout, suitable for piping into `jq` or `gron`.  
 
-There are two top-level keys, `commands` and `info`.  `info` doesn't have much in it now. `commands` is where most of the fun is. Take a look at the example below. It's a list of information about each command which was run. It is in random order. 
+There are two top-level keys, `commands` and `info`.  `info` doesn't have much in it now, just the overall runtime. `commands` is where most of the fun is. Take a look at the example below. It's a list of information about each command which was run. Host as substituted in in random order. This is by design.
 
 Some things to note are: `stdout` is there as an array, with each line of stdout a separate array element. `stderr` is stored the same way too. The return code from the application is in `returncode` and the runtime for the command is `runtime`. 
 
