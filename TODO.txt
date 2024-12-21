@@ -3,6 +3,7 @@ command structure:
 
 concur "command to run" ..list of hosts to run against...  --flags
 
+progress bar
 
 flags
  any vs all
