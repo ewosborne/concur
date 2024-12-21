@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -92,11 +93,10 @@ func reportDone(completedCommands CommandList, systemRunTime time.Duration) {
 
 	results, err := json.MarshalIndent(res, "", " ")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error marshaling results")
+		slog.Error("error marshaling results")
 	}
-	fmt.Println(string(results))
 
-	//fmt.Println("OVERAL RUNTIME", res.Info["systemRunTime"])
+	fmt.Println(string(results))
 
 	if flagErrors {
 		for _, c := range res.Commands {

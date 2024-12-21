@@ -88,6 +88,7 @@ func init() {
 		case "":
 			outStream = io.Discard
 		default:
+			// can't log this because it's about setting logs..
 			fmt.Fprintf(os.Stderr, "Invalid debug level: %s\n", logLevelFlag)
 			os.Exit(1)
 		}
