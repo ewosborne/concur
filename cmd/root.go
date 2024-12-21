@@ -47,6 +47,7 @@ func populateFlags(cmd *cobra.Command) infra.Flags {
 	flags.Timeout, _ = cmd.Flags().GetInt64("timeout")
 	flags.Token, _ = cmd.Flags().GetString("token")
 	flags.FlagErrors, _ = cmd.Flags().GetBool("flag-errors")
+	flags.FirstZero, _ = cmd.Flags().GetBool("first-zero")
 	return flags
 }
 
@@ -59,6 +60,7 @@ func Execute() {
 
 func init() {
 	rootCmd.Flags().Bool("any", false, "Any (first) command")
+	rootCmd.Flags().Bool("first-zero", false, "First command with exit code of zero")
 	//	rootCmd.MarkFlagsMutuallyExclusive("any", "all")
 	//	rootCmd.MarkFlagsOneRequired("any", "all") // TODO this isn't quite what I want.
 

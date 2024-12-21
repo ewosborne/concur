@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -31,6 +32,7 @@ type Flags struct {
 	Timeout         int64
 	Token           string
 	FlagErrors      bool
+	FirstZero       bool
 }
 
 type CommandList []*Command
@@ -175,23 +177,29 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 	for {
 		select {
 		case c := <-done:
-			completedCommands = append(completedCommands, c)
 
 			//fmt.Println(c.Host, "command is done")
 
-			if flags.Any {
-				//fmt.Println("first command returned, exiting")
-				//os.Exit(0) // TODO just return or something
+			//fmt.Printf("flags %+v\n", flags)
+			//fmt.Printf("rc %v\n", c.ReturnCode)
+			// TODO: add a case for --first-zero to stop execution when we get the first result with a zero exit code.
+			if flags.Any || (flags.FirstZero && c.ReturnCode == 0) {
+				slog.Debug(fmt.Sprintf("returning %s", c.Arg))
+				completedCommands = CommandList{c}
 				return completedCommands
-			} // otherwise flags.All so don't exit loop
+			} else {
+				completedCommands = append(completedCommands, c)
+			}
+			// otherwise flags.All so don't exit loop
 
 			if len(completedCommands) == len(cmdList) {
 				//fmt.Println("ALL", len(cmdList), "COMMANDS DONE")
 				return completedCommands
 			}
 		case <-ctx.Done():
-			msg := fmt.Sprintf("context popped, %v jobs done", len(completedCommands))
-			panic(msg)
+			fmt.Fprintf(os.Stderr, "context popped, %v jobs done", len(completedCommands))
+			// TODO maybe return what I already have??
+			return completedCommands
 		}
 	}
 }
