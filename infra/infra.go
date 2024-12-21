@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -58,12 +57,6 @@ func Do(command string, substituteArgs []string, flags Flags) {
 	//fmt.Println("timeout", t)
 	ctx, cancelCtx := context.WithTimeout(context.Background(), t)
 	defer cancelCtx()
-
-	slog.Info("info")
-	slog.Debug("debug")
-	slog.Warn("warn")
-	slog.Error("error")
-	slog.Log(ctx, slog.LevelInfo, "second info")
 
 	//fmt.Println("args", substituteArgs, len(substituteArgs))
 	//fmt.Printf("flags %+v\n", flags)
