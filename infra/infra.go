@@ -10,6 +10,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/spf13/cobra"
 )
 
 type Command struct {
@@ -173,31 +175,33 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 	for {
 		select {
 		case c := <-done:
-
-			//fmt.Println(c.Host, "command is done")
-
-			//fmt.Printf("flags %+v\n", flags)
-			//fmt.Printf("rc %v\n", c.ReturnCode)
-			// TODO: add a case for --first-zero to stop execution when we get the first result with a zero exit code.
 			if flags.Any || (flags.FirstZero && c.ReturnCode == 0) {
 				slog.Debug(fmt.Sprintf("returning %s", c.Arg))
-				completedCommands = CommandList{c}
-				return completedCommands
+				return CommandList{c}
 			} else {
 				completedCommands = append(completedCommands, c)
 			}
-			// otherwise flags.All so don't exit loop
-
 			if len(completedCommands) == len(cmdList) {
 				//fmt.Println("ALL", len(cmdList), "COMMANDS DONE")
 				return completedCommands
 			}
 		case <-ctx.Done():
 			fmt.Fprintf(os.Stderr, "context popped, %v jobs done", len(completedCommands))
-			// TODO maybe return what I already have??
 			return completedCommands
 		}
 	}
+}
+
+func PopulateFlags(cmd *cobra.Command) Flags {
+	flags := Flags{}
+	// I sure wish there was a cleaner way to do this
+	flags.Any, _ = cmd.Flags().GetBool("any")
+	flags.ConcurrentLimit, _ = cmd.Flags().GetInt("concurrent")
+	flags.Timeout, _ = cmd.Flags().GetInt64("timeout")
+	flags.Token, _ = cmd.Flags().GetString("token")
+	flags.FlagErrors, _ = cmd.Flags().GetBool("flag-errors")
+	flags.FirstZero, _ = cmd.Flags().GetBool("first-zero")
+	return flags
 }
 
 func buildListOfCommands(command string, hosts []string, token string) (CommandList, error) {

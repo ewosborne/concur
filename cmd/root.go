@@ -33,22 +33,10 @@ func ConcurCmdE(cmd *cobra.Command, args []string) error {
 
 	command := args[0]
 	opts := args[1:]
-	flags := populateFlags(cmd)
+	flags := infra.PopulateFlags(cmd)
 
 	infra.Do(command, opts, flags)
 	return nil
-}
-
-func populateFlags(cmd *cobra.Command) infra.Flags {
-	flags := infra.Flags{}
-	// I sure wish there was a cleaner way to do this
-	flags.Any, _ = cmd.Flags().GetBool("any")
-	flags.ConcurrentLimit, _ = cmd.Flags().GetInt("concurrent")
-	flags.Timeout, _ = cmd.Flags().GetInt64("timeout")
-	flags.Token, _ = cmd.Flags().GetString("token")
-	flags.FlagErrors, _ = cmd.Flags().GetBool("flag-errors")
-	flags.FirstZero, _ = cmd.Flags().GetBool("first-zero")
-	return flags
 }
 
 func Execute() {
