@@ -18,7 +18,7 @@ var enableDebug bool
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "concur",
+	Use:   "concur <command string> <list of hosts> [flags]",
 	Short: "Run commands concurrently",
 	RunE:  ConcurCmdE,
 }
