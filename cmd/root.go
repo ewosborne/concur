@@ -33,22 +33,10 @@ func ConcurCmdE(cmd *cobra.Command, args []string) error {
 
 	command := args[0]
 	opts := args[1:]
-	flags := populateFlags(cmd)
+	flags := infra.PopulateFlags(cmd)
 
 	infra.Do(command, opts, flags)
 	return nil
-}
-
-func populateFlags(cmd *cobra.Command) infra.Flags {
-	flags := infra.Flags{}
-	// I sure wish there was a cleaner way to do this
-	flags.Any, _ = cmd.Flags().GetBool("any")
-	flags.ConcurrentLimit, _ = cmd.Flags().GetInt("concurrent")
-	flags.Timeout, _ = cmd.Flags().GetInt64("timeout")
-	flags.Token, _ = cmd.Flags().GetString("token")
-	flags.FlagErrors, _ = cmd.Flags().GetBool("flag-errors")
-	flags.FirstZero, _ = cmd.Flags().GetBool("first-zero")
-	return flags
 }
 
 func Execute() {
@@ -61,20 +49,16 @@ func Execute() {
 func init() {
 	rootCmd.Flags().Bool("any", false, "Any (first) command")
 	rootCmd.Flags().Bool("first-zero", false, "First command with exit code of zero")
-	//	rootCmd.MarkFlagsMutuallyExclusive("any", "all")
-	//	rootCmd.MarkFlagsOneRequired("any", "all") // TODO this isn't quite what I want.
 
 	rootCmd.Flags().IntP("concurrent", "c", 128, "Number of concurrent processes (0 = no limit)")
 	rootCmd.Flags().Int64P("timeout", "t", 90_000, "Timeout in msec (0 for no timeout)")
 	rootCmd.Flags().StringP("token", "", "{{1}}", "Token to match for replacement")
 	rootCmd.Flags().BoolP("flag-errors", "", false, "Print a message to stderr for all executed commands with an exit code other than zero")
 	rootCmd.PersistentFlags().StringVarP(&logLevelFlag, "log level", "l", "", "Enable debug mode (one of d, i, w, e)")
-
-	// debugLogger = log.New(os.Stdout, "DEBUG: ", log.Ldate|log.Ltime)
-
-	// // need PreRun because flags aren't parsed until a command is run.
 	var logLevel slog.Level
 	var outStream io.Writer = os.Stderr
+
+	// is there a better way to do this?  TODO
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 
 		// TODO maybe make this a fixed set of options somehow?
