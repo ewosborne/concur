@@ -50,17 +50,10 @@ func Do(command string, substituteArgs []string, flags Flags) {
 	flagErrors = flags.FlagErrors
 	systemStartTime := time.Now()
 
-	//slog.Info("is this a default?")
-
 	// TODO: pass flags in as float in seconds, convert to integer msec
-	//fmt.Println("flags is", flags.Timeout)
 	t := time.Duration(flags.Timeout) * time.Millisecond
-	//fmt.Println("timeout", t)
 	ctx, cancelCtx := context.WithTimeout(context.Background(), t)
 	defer cancelCtx()
-
-	//fmt.Println("args", substituteArgs, len(substituteArgs))
-	//fmt.Printf("flags %+v\n", flags)
 
 	// build a list of commands
 	cmdList, err := buildListOfCommands(command, substituteArgs, flags.Token)
@@ -116,6 +109,7 @@ func execute(ctx context.Context, c *Command) error {
 	name, args := f[0], f[1:]
 
 	//fmt.Println("executing", name, args, len(args))
+	slog.Debug("in execute() with", "name", name, "args", args, "arglen", len(args))
 
 	cmd := exec.CommandContext(ctx, name, args...)
 
@@ -153,6 +147,7 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 			c.StartTime = time.Now()
 
 			//fmt.Println("running command", c.Arg)
+			slog.Debug("running command", "arg", c.Substituted)
 
 			// test: sleep for 0.1-2.6 sec
 			err := execute(ctx, c)
