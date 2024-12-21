@@ -3,6 +3,8 @@ command structure:
 
 concur "command to run" ..list of hosts to run against...  --flags
 
+fix `-c 0`, which just hangs.
+add knob to differentiate between --any (including non-zero return codes) and --first-successful.
 
 flags
  any vs all
