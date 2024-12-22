@@ -1,6 +1,7 @@
 package test_concur
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -65,6 +66,12 @@ func Test_DoBySleeping(t *testing.T) {
 
 		if len(jsonResults) == 0 {
 			t.Errorf("somehow got an empty json")
+		}
+
+		var holder = make(map[string]any)
+		err = json.Unmarshal([]byte(jsonResults), &holder)
+		if err != nil {
+			t.Errorf("can't unmarshal json to map: %v\n", err)
 		}
 
 	}
