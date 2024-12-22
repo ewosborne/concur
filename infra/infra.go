@@ -74,6 +74,8 @@ type Flags struct {
 }
 
 // for now, sometimes passed into things
+//
+//	TODO do away with this and just use CommandMap and range over it?
 type CommandList []*Command
 
 type CommandMap map[JobID]*Command
@@ -104,7 +106,7 @@ func Do(command string, substituteArgs []string, flags Flags) {
 	}
 
 	// go run the things
-	completedCommands := start_command_loop(ctx, cmdList, flags)
+	completedCommands := command_loop(ctx, cmdList, flags)
 
 	// presentation and cleanup
 	systemEndTime := time.Now()
@@ -146,15 +148,10 @@ func reportDone(completedCommands CommandMap, systemRunTime time.Duration) {
 
 func execute(ctx context.Context, c *Command) {
 
-	// TODO deal with breaking this into the command to run and its arguments
 	f := strings.Fields(c.Substituted)
 	name, args := f[0], f[1:]
 
-	//fmt.Println("in execute() with", "name", name, "args", args, "arglen", len(args))
-
 	cmd := exec.CommandContext(ctx, name, args...)
-
-	// TODO test stderr, make sure this works ok.
 
 	var outb, errb strings.Builder
 	cmd.Stdout = &outb
@@ -178,20 +175,16 @@ func execute(ctx context.Context, c *Command) {
 
 }
 
-func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) CommandMap {
+func command_loop(ctx context.Context, cmdList CommandList, flags Flags) CommandMap {
 
 	var tokens = make(chan struct{}, flags.ConcurrentLimit) // permission to run
 	var done = make(chan *Command)                          // where a command goes when it's done
 	var completedCommands CommandList                       // count all the done processes
 	var cmdMap = CommandMap{}
 
+	// launch all goroutines
 	for _, c := range cmdList {
-		//fmt.Println("STARTING", c.Substituted, "END STARTING")
-
 		cmdMap[c.ID] = c
-		//fmt.Println("CMDMAP", cmdMap, "ENDCMDMAP")
-		//wg.Add(1)
-
 		go func() {
 			tokens <- struct{}{} // get permission to start
 			c.StartTime = time.Now()
@@ -213,7 +206,8 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 
 	// TODO should break this loop out into another function I guess.
 	// TODO should completionCount be a waitgroup? does it matter? maybe or maybe not
-	//  I want to short-circuit stuff so maybe it's not the right place?
+
+	// gather everything we want and then return
 	var completionCount int
 
 Outer:
@@ -270,7 +264,7 @@ func buildListOfCommands(command string, hosts []string, token string) (CommandL
 		ret = append(ret, &x)
 	}
 
-	// mix them up just so there's no ordering depedency if they all take about the same time. otherwise the first one in the list
+	// mix them up just so there's no ordering dependency if they all take about the same time. otherwise the first one in the list
 	//   tends to be the one we return first with --any.
 	rand.Shuffle(len(ret), func(i, j int) {
 		ret[i], ret[j] = ret[j], ret[i]
