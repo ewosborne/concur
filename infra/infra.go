@@ -134,7 +134,7 @@ func reportDone(completedCommands CommandMap, systemRunTime time.Duration, flags
 
 	res.Commands = completedCommands
 	res.Info["systemRunTime"] = systemRunTime.String()
-	res.Info["coroutineLimit"] = fmt.Sprintf("%v", flags.goroutineLimit)
+	res.Info["coroutineLimit"] = strconv.Itoa(flags.goroutineLimit)
 
 	results, err := json.MarshalIndent(res, "", " ")
 	if err != nil {
