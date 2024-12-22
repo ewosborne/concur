@@ -175,7 +175,7 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 	for {
 		select {
 		case c := <-done:
-			if flags.Any || (flags.FirstZero && c.ReturnCode == 0) {
+			if flags.FirstZero || (flags.Any && c.ReturnCode == 0) {
 				slog.Debug(fmt.Sprintf("returning %s", c.Arg))
 				return CommandList{c}
 			} else {
@@ -202,7 +202,7 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 	flags.Timeout = time.Duration(tmp) * time.Second
 	flags.Token, _ = cmd.Flags().GetString("token")
 	flags.FlagErrors, _ = cmd.Flags().GetBool("flag-errors")
-	flags.FirstZero, _ = cmd.Flags().GetBool("first-zero")
+	flags.FirstZero, _ = cmd.Flags().GetBool("first")
 	return flags
 }
 
