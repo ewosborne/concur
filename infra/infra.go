@@ -31,7 +31,7 @@ type Flags struct {
 	Any             bool
 	All             bool
 	ConcurrentLimit int
-	Timeout         int64
+	Timeout         time.Duration
 	Token           string
 	FlagErrors      bool
 	FirstZero       bool
@@ -197,7 +197,9 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 	// I sure wish there was a cleaner way to do this
 	flags.Any, _ = cmd.Flags().GetBool("any")
 	flags.ConcurrentLimit, _ = cmd.Flags().GetInt("concurrent")
-	flags.Timeout, _ = cmd.Flags().GetInt64("timeout")
+
+	tmp, _ := cmd.Flags().GetInt64("timeout")
+	flags.Timeout = time.Duration(tmp) * time.Second
 	flags.Token, _ = cmd.Flags().GetString("token")
 	flags.FlagErrors, _ = cmd.Flags().GetBool("flag-errors")
 	flags.FirstZero, _ = cmd.Flags().GetBool("first-zero")
