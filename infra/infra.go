@@ -14,11 +14,43 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type JobStatus int
+
+const (
+	TBD JobStatus = iota
+	Started
+	Running
+	Finished
+	Errored
+)
+
+func (j JobStatus) MarshalJSON() ([]byte, error) {
+	return json.Marshal(j.String())
+}
+
+func (j JobStatus) String() string {
+	switch j {
+	case TBD:
+		return "TBD"
+	case Started:
+		return "Started"
+	case Running:
+		return "Running"
+	case Finished:
+		return "Finished"
+	case Errored:
+		return "Errored"
+	default:
+		return "Unknown"
+	}
+}
+
 type Command struct {
-	Original    string   `json:"original"`
-	Substituted string   `json:"substituted"`
-	Arg         string   `json:"arg"`
-	Stdout      []string `json:"stdout"`
+	Status      JobStatus `json:"jobstatus"`
+	Original    string    `json:"original"`
+	Substituted string    `json:"substituted"`
+	Arg         string    `json:"arg"`
+	Stdout      []string  `json:"stdout"`
 	//Stdin       string    `json:"stdin"`
 	Stderr     []string  `json:"stderr"`
 	StartTime  time.Time `json:"starttime"`
@@ -122,14 +154,19 @@ func execute(ctx context.Context, c *Command) error {
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
 
+	c.Status = Running
 	err := cmd.Run()
-	c.ReturnCode = 0
+
 	if err != nil {
 		if exitError, ok := err.(*exec.ExitError); ok {
 			c.ReturnCode = exitError.ExitCode()
+			c.Status = Errored
 			return err
 		}
 	}
+
+	c.Status = Finished
+	c.ReturnCode = 0
 
 	c.Stdout = strings.Split(outb.String(), "\n")
 	c.Stderr = strings.Split(errb.String(), "\n")
@@ -172,6 +209,8 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 	}
 
 	// TODO should break this loop out into another function I guess.
+
+	// TODO: set this up so that jobs which time out also get returned but with a status of "timed out".
 	for {
 		select {
 		case c := <-done:
@@ -215,6 +254,7 @@ func buildListOfCommands(command string, hosts []string, token string) (CommandL
 		x.Original = command
 		x.Arg = host
 		x.Substituted = strings.ReplaceAll(command, token, host)
+		x.Status = TBD
 
 		ret = append(ret, &x)
 	}
