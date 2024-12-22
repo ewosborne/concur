@@ -8,6 +8,8 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -66,7 +68,8 @@ type Command struct {
 type Flags struct {
 	Any             bool
 	All             bool
-	ConcurrentLimit int
+	ConcurrentLimit string
+	goroutineLimit  int // derived from ConcurrencyLimit
 	Timeout         time.Duration
 	Token           string
 	FlagErrors      bool
@@ -106,8 +109,8 @@ func Do(command string, substituteArgs []string, flags Flags) {
 	}
 
 	// flag fixup
-	if flags.ConcurrentLimit == 0 {
-		flags.ConcurrentLimit = len(cmdList)
+	if flags.goroutineLimit == 0 {
+		flags.goroutineLimit = len(cmdList)
 	}
 	// go run the things
 	completedCommands := command_loop(ctx, cmdList, flags)
@@ -116,7 +119,7 @@ func Do(command string, substituteArgs []string, flags Flags) {
 	systemEndTime := time.Now()
 	systemRunTime := systemEndTime.Sub(systemStartTime)
 
-	reportDone(completedCommands, systemRunTime)
+	reportDone(completedCommands, systemRunTime, flags)
 }
 
 type Results struct {
@@ -124,13 +127,14 @@ type Results struct {
 	Info     map[string]string `json:"info"`
 }
 
-func reportDone(completedCommands CommandMap, systemRunTime time.Duration) {
+func reportDone(completedCommands CommandMap, systemRunTime time.Duration, flags Flags) {
 
 	var res = Results{}
 	res.Info = make(map[string]string)
 
 	res.Commands = completedCommands
 	res.Info["systemRunTime"] = systemRunTime.String()
+	res.Info["coroutineLimit"] = fmt.Sprintf("%v", flags.goroutineLimit)
 
 	results, err := json.MarshalIndent(res, "", " ")
 	if err != nil {
@@ -182,9 +186,9 @@ func execute(ctx context.Context, c *Command) {
 func command_loop(ctx context.Context, cmdList CommandList, flags Flags) CommandMap {
 
 	// TODO if I'm going to get clever about concurrnetLimit being a string, maybe it's here?
-	var tokens = make(chan struct{}, flags.ConcurrentLimit) // permission to run
-	var done = make(chan *Command)                          // where a command goes when it's done
-	var completedCommands CommandList                       // count all the done processes
+	var tokens = make(chan struct{}, flags.goroutineLimit) // permission to run
+	var done = make(chan *Command)                         // where a command goes when it's done
+	var completedCommands CommandList                      // count all the done processes
 	var cmdMap = CommandMap{}
 
 	// launch all goroutines
@@ -242,7 +246,21 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 	flags := Flags{}
 	// I sure wish there was a cleaner way to do this
 	flags.Any, _ = cmd.Flags().GetBool("any")
-	flags.ConcurrentLimit, _ = cmd.Flags().GetInt("concurrent")
+	flags.ConcurrentLimit, _ = cmd.Flags().GetString("concurrent")
+
+	switch flags.ConcurrentLimit {
+	case "cpu", "1x":
+		flags.goroutineLimit = runtime.NumCPU()
+	case "2x":
+		flags.goroutineLimit = runtime.NumCPU() * 2
+	default:
+		x, err := strconv.Atoi(flags.ConcurrentLimit)
+		if err != nil {
+			panic("bad flag number")
+		}
+		flags.goroutineLimit = x
+	}
+
 	tmp, _ := cmd.Flags().GetInt64("timeout")
 	flags.Timeout = time.Duration(tmp) * time.Second
 	flags.Token, _ = cmd.Flags().GetString("token")
