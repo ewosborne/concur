@@ -15,6 +15,9 @@ import (
 )
 
 type JobStatus int
+type JobID int
+
+var id JobID
 
 const (
 	TBD JobStatus = iota
@@ -46,6 +49,7 @@ func (j JobStatus) String() string {
 }
 
 type Command struct {
+	ID          JobID     `json:"id"`
 	Status      JobStatus `json:"jobstatus"`
 	Original    string    `json:"original"`
 	Substituted string    `json:"substituted"`
@@ -69,7 +73,10 @@ type Flags struct {
 	FirstZero       bool
 }
 
+// for now, sometimes passed into things
 type CommandList []*Command
+
+type CommandMap map[JobID]*Command
 
 func (c Command) String() string {
 	b, _ := json.MarshalIndent(c, "", " ") // TODO clean this up, particularly RunTime
@@ -107,11 +114,11 @@ func Do(command string, substituteArgs []string, flags Flags) {
 }
 
 type Results struct {
-	Commands CommandList       `json:"commands"`
+	Commands CommandMap        `json:"commands"`
 	Info     map[string]string `json:"info"`
 }
 
-func reportDone(completedCommands CommandList, systemRunTime time.Duration) {
+func reportDone(completedCommands CommandMap, systemRunTime time.Duration) {
 
 	var res = Results{}
 	res.Info = make(map[string]string)
@@ -173,14 +180,21 @@ func execute(ctx context.Context, c *Command) error {
 	return nil
 }
 
-func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) CommandList {
+func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) CommandMap {
 
 	var tokens = make(chan struct{}, flags.ConcurrentLimit) // permission to run
 	var done = make(chan *Command)                          // where a command goes when it's done
 	var completedCommands CommandList                       // count all the done processes
+	var cmdMap = CommandMap{}
+	/*
+		works so far
+		TODO: filter out to just success? or is that too many nerd knobs? better handled with jq?
+	*/
 
 	// launch each command
 	for _, c := range cmdList {
+
+		cmdMap[c.ID] = c
 
 		go func() {
 			tokens <- struct{}{} // ge!jt permission to start
@@ -216,17 +230,21 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 		case c := <-done:
 			if flags.FirstZero || (flags.Any && c.ReturnCode == 0) {
 				slog.Debug(fmt.Sprintf("returning %s", c.Arg))
-				return CommandList{c}
+				//return CommandList{c}
+				//return CommandMap{c.ID: c}
+				return cmdMap
 			} else {
 				completedCommands = append(completedCommands, c)
 			}
 			if len(completedCommands) == len(cmdList) {
 				//fmt.Println("ALL", len(cmdList), "COMMANDS DONE")
-				return completedCommands
+
+				return cmdMap
 			}
 		case <-ctx.Done():
 			fmt.Fprintf(os.Stderr, "context popped, %v jobs done", len(completedCommands))
-			return completedCommands
+
+			return cmdMap
 		}
 	}
 }
@@ -255,6 +273,9 @@ func buildListOfCommands(command string, hosts []string, token string) (CommandL
 		x.Arg = host
 		x.Substituted = strings.ReplaceAll(command, token, host)
 		x.Status = TBD
+		x.ID = id
+
+		id += 1
 
 		ret = append(ret, &x)
 	}
