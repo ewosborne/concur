@@ -144,14 +144,13 @@ func reportDone(completedCommands CommandMap, systemRunTime time.Duration) {
 
 }
 
-func execute(ctx context.Context, c *Command) error {
+func execute(ctx context.Context, c *Command) {
 
 	// TODO deal with breaking this into the command to run and its arguments
 	f := strings.Fields(c.Substituted)
 	name, args := f[0], f[1:]
 
-	//fmt.Println("executing", name, args, len(args))
-	slog.Debug("in execute() with", "name", name, "args", args, "arglen", len(args))
+	//fmt.Println("in execute() with", "name", name, "args", args, "arglen", len(args))
 
 	cmd := exec.CommandContext(ctx, name, args...)
 
@@ -165,19 +164,18 @@ func execute(ctx context.Context, c *Command) error {
 	err := cmd.Run()
 
 	if err != nil {
+		c.Status = Errored
 		if exitError, ok := err.(*exec.ExitError); ok {
 			c.ReturnCode = exitError.ExitCode()
-			c.Status = Errored
-			return err
 		}
+	} else {
+		c.Status = Finished
+		c.ReturnCode = 0
 	}
-
-	c.Status = Finished
-	c.ReturnCode = 0
 
 	c.Stdout = strings.Split(outb.String(), "\n")
 	c.Stderr = strings.Split(errb.String(), "\n")
-	return nil
+
 }
 
 func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) CommandMap {
@@ -192,22 +190,19 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 	*/
 
 	// launch each command
+	//var wg sync.WaitGroup
 	for _, c := range cmdList {
+		//fmt.Println("STARTING", c.Substituted, "END STARTING")
 
 		cmdMap[c.ID] = c
+		//fmt.Println("CMDMAP", cmdMap, "ENDCMDMAP")
+		//wg.Add(1)
 
 		go func() {
-			tokens <- struct{}{} // ge!jt permission to start
+			tokens <- struct{}{} // get permission to start
 			c.StartTime = time.Now()
 
-			//fmt.Println("running command", c.Arg)
-			slog.Debug("running command", "arg", c.Substituted)
-
-			// test: sleep for 0.1-2.6 sec
-			err := execute(ctx, c)
-			if err != nil {
-				//fmt.Fprintf(os.Stderr, "error running command: %v %v\n", c.Arg, err)
-			}
+			execute(ctx, c)
 			c.EndTime = time.Now()
 			rt := c.EndTime.Sub(c.StartTime)
 			a, err := time.ParseDuration(rt.String())
@@ -221,26 +216,26 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 		}()
 
 	}
+	//wg.Wait()
 
 	// TODO stop and think about this whole thing
 	// TODO should break this loop out into another function I guess.
 	// TODO don't return in three places, that's not classy
+	var completionCount int
 	for {
-		fmt.Println("looping")
 		select {
 		case c := <-done:
 			if flags.FirstZero || (flags.Any && c.ReturnCode == 0) {
 				slog.Debug(fmt.Sprintf("returning %s", c.Arg))
-				//return cmdMap
-
 				// this only returns the single command we're interested in.  TODO is that what I want?
 				return CommandMap{c.ID: c}
-
-			} else if len(cmdMap) == len(cmdList) {
-				return cmdMap
 			}
+			completionCount += 1
 		case <-ctx.Done():
 			fmt.Fprintf(os.Stderr, "context popped, %v jobs done", len(completedCommands))
+			return cmdMap
+		}
+		if len(cmdMap) == completionCount {
 			return cmdMap
 		}
 	}
