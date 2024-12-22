@@ -181,6 +181,7 @@ func execute(ctx context.Context, c *Command) {
 
 func command_loop(ctx context.Context, cmdList CommandList, flags Flags) CommandMap {
 
+	// TODO if I'm going to get clever about concurrnetLimit being a string, maybe it's here?
 	var tokens = make(chan struct{}, flags.ConcurrentLimit) // permission to run
 	var done = make(chan *Command)                          // where a command goes when it's done
 	var completedCommands CommandList                       // count all the done processes

@@ -1,17 +1,11 @@
 
-command structure:
-
-concur "command to run" ..list of hosts to run against...  --flags
-
 progress bar
-add knob to differentiate between --any (including non-zero return codes) and --first-successful.
 
 flags
- any vs all
  output type, default json
  timeout
  num procs, 0 for infinite. default 128.  some flag to also say "num-cpus" somehow, or "num-cores".
-
+  runtime.NumCPU()
 
 * can I just add flags and args to a context?  is that what they're for?
 
