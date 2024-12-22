@@ -141,16 +141,26 @@ type ResultsInfo struct {
 	SystemRunTime  time.Duration
 }
 
-func ReportDone(res Results) {
-
-	// little fixup for printout but still fucky and I don't like it.
+func GetJSONReport(res Results) (string, error) {
 	res.Info.SystemRunTime = res.Info.SystemRunTime / time.Millisecond
 	jsonResults, err := json.MarshalIndent(res, "", " ")
 	if err != nil {
 		slog.Error("error marshaling results")
+		return "", err
 	}
 
-	fmt.Println(string(jsonResults))
+	return string(jsonResults), nil
+}
+
+func ReportDone(res Results) {
+
+	// little fixup for printout but still fucky and I don't like it.
+
+	jsonResults, err := GetJSONReport(res)
+	if err != nil {
+		panic("todo fixme")
+	}
+	fmt.Println(jsonResults)
 
 	if flagErrors {
 		for _, c := range res.Commands {

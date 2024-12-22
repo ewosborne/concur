@@ -18,10 +18,10 @@ build:
     #ln -fs dist/{{ bin }}_darwin_arm64_v8.0/{{ bin }} ./$bin
     cp dist/{{ bin }}_darwin_arm64_v8.0/{{ bin }} .
 
-test:
+test: build
     go test ./tests
 
-testv:
+testv: build
     go test ./tests -test.v
 
 fmt:
