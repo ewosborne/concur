@@ -184,13 +184,7 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 	var done = make(chan *Command)                          // where a command goes when it's done
 	var completedCommands CommandList                       // count all the done processes
 	var cmdMap = CommandMap{}
-	/*
-		works so far
-		TODO: filter out to just success? or is that too many nerd knobs? better handled with jq?
-	*/
 
-	// launch each command
-	//var wg sync.WaitGroup
 	for _, c := range cmdList {
 		//fmt.Println("STARTING", c.Substituted, "END STARTING")
 
@@ -216,29 +210,33 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 		}()
 
 	}
-	//wg.Wait()
 
-	// TODO stop and think about this whole thing
 	// TODO should break this loop out into another function I guess.
-	// TODO don't return in three places, that's not classy
+	// TODO should completionCount be a waitgroup? does it matter? maybe or maybe not
+	//  I want to short-circuit stuff so maybe it's not the right place?
 	var completionCount int
-	for {
+
+Outer:
+	for completionCount != len(cmdMap) {
+
 		select {
 		case c := <-done:
+			completionCount += 1
+
 			if flags.FirstZero || (flags.Any && c.ReturnCode == 0) {
 				slog.Debug(fmt.Sprintf("returning %s", c.Arg))
 				// this only returns the single command we're interested in.  TODO is that what I want?
-				return CommandMap{c.ID: c}
+				cmdMap = CommandMap{c.ID: c}
+				break Outer
 			}
-			completionCount += 1
+
 		case <-ctx.Done():
 			fmt.Fprintf(os.Stderr, "context popped, %v jobs done", len(completedCommands))
-			return cmdMap
-		}
-		if len(cmdMap) == completionCount {
-			return cmdMap
+			break Outer
 		}
 	}
+	// Outer: breaks here
+	return cmdMap
 }
 
 func PopulateFlags(cmd *cobra.Command) Flags {
