@@ -79,3 +79,15 @@ build sane args structure
 get back commandlist or commandmap or something data-structure-y
   ^ test up to this point.
 print it out
+
+ConcurCmdE
+  clean up args
+  PrintOut(Do(args))
+
+Do(args) returns a cmdmap, fully populated
+PrintOut just displays the json
+
+then test by calling Do(args)
+and a testscript that calls a slightly wrapped PrintOut()
+
+this is ok but how do I print SystemRunTime as time.Duration?  results.info is getting overloaded.

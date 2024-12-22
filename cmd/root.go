@@ -35,7 +35,8 @@ func ConcurCmdE(cmd *cobra.Command, args []string) error {
 	opts := args[1:]
 	flags := infra.PopulateFlags(cmd)
 
-	infra.Do(command, opts, flags)
+	infra.ReportDone(infra.Do(command, opts, flags))
+
 	return nil
 }
 
