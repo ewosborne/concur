@@ -105,6 +105,10 @@ func Do(command string, substituteArgs []string, flags Flags) {
 		panic(err) // TODO fix
 	}
 
+	// flag fixup
+	if flags.ConcurrentLimit == 0 {
+		flags.ConcurrentLimit = len(cmdList)
+	}
 	// go run the things
 	completedCommands := command_loop(ctx, cmdList, flags)
 
@@ -238,7 +242,6 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 	// I sure wish there was a cleaner way to do this
 	flags.Any, _ = cmd.Flags().GetBool("any")
 	flags.ConcurrentLimit, _ = cmd.Flags().GetInt("concurrent")
-
 	tmp, _ := cmd.Flags().GetInt64("timeout")
 	flags.Timeout = time.Duration(tmp) * time.Second
 	flags.Token, _ = cmd.Flags().GetString("token")
