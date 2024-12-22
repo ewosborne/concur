@@ -222,28 +222,25 @@ func start_command_loop(ctx context.Context, cmdList CommandList, flags Flags) C
 
 	}
 
+	// TODO stop and think about this whole thing
 	// TODO should break this loop out into another function I guess.
-
-	// TODO: set this up so that jobs which time out also get returned but with a status of "timed out".
+	// TODO don't return in three places, that's not classy
 	for {
+		fmt.Println("looping")
 		select {
 		case c := <-done:
 			if flags.FirstZero || (flags.Any && c.ReturnCode == 0) {
 				slog.Debug(fmt.Sprintf("returning %s", c.Arg))
-				//return CommandList{c}
-				//return CommandMap{c.ID: c}
-				return cmdMap
-			} else {
-				completedCommands = append(completedCommands, c)
-			}
-			if len(completedCommands) == len(cmdList) {
-				//fmt.Println("ALL", len(cmdList), "COMMANDS DONE")
+				//return cmdMap
 
+				// this only returns the single command we're interested in.  TODO is that what I want?
+				return CommandMap{c.ID: c}
+
+			} else if len(cmdMap) == len(cmdList) {
 				return cmdMap
 			}
 		case <-ctx.Done():
 			fmt.Fprintf(os.Stderr, "context popped, %v jobs done", len(completedCommands))
-
 			return cmdMap
 		}
 	}
