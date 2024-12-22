@@ -55,7 +55,7 @@ func Test_BySleeping(t *testing.T) {
 		// what to sanity check?
 		srt := results.Info.SystemRunTime
 		if srt < entry.LowEst || srt > entry.HighEst {
-			t.Errorf("something is fucky about system runtime %v: low:%v high:%v", results.Info.SystemRunTime, entry.LowEst, entry.HighEst)
+			t.Errorf("system runtime %v not withing range low:%v high:%v", results.Info.SystemRunTime, entry.LowEst, entry.HighEst)
 		}
 	}
 
