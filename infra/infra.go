@@ -92,13 +92,22 @@ var flagErrors bool
 
 func Do(command string, substituteArgs []string, flags Flags) Results {
 	// do all the heavy lifting here
+	var ctx context.Context
+	var cancelCtx context.CancelFunc
 
 	flagErrors = flags.FlagErrors
 	systemStartTime := time.Now()
 
 	// TODO: pass flags in as float in seconds, convert to integer msec
-	t := time.Duration(flags.Timeout) * time.Millisecond
-	ctx, cancelCtx := context.WithTimeout(context.Background(), t)
+
+	switch flags.Timeout {
+	case 0:
+		ctx, cancelCtx = context.WithCancel(context.Background())
+
+	default:
+		ctx, cancelCtx = context.WithTimeout(context.Background(), flags.Timeout)
+	}
+
 	defer cancelCtx()
 
 	// build a list of commands
@@ -120,7 +129,6 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 
 	// return Results map
 	var res = Results{}
-	//res.Info = make(map[string]string)
 
 	res.Commands = completedCommands
 	res.Info.SystemRunTime = systemRunTime
@@ -282,6 +290,7 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 
 	tmp, _ := cmd.Flags().GetInt64("timeout")
 	flags.Timeout = time.Duration(tmp) * time.Second
+
 	flags.Token, _ = cmd.Flags().GetString("token")
 	flags.FlagErrors, _ = cmd.Flags().GetBool("flag-errors")
 	flags.FirstZero, _ = cmd.Flags().GetBool("first")
