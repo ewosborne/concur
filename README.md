@@ -44,7 +44,19 @@ This runs `ping -c 1` for each of those three web sites, replacing `{{1}}` with 
 
 There are two top-level keys, `commands` and `info`.  `info` doesn't have much in it now, just the overall runtime in milliseconds and the number of worker goroutines. `commands` is where most of the fun is. Take a look at the example below. It's a list of information about each command which was run. Host as substituted in in random order. This is by design.
 
-Some things to note are: `stdout` is there as an array, with each line of stdout a separate array element. `stderr` is stored the same way too. The return code from the application is in `returncode` and the runtime for the command is `runtime`. 
+Some things to note are: `stdout` is there as an array, with each line of stdout a separate array element. `stderr` is stored the same way too. The return code from the application is in `returncode` and the runtime for the command is `runtime`. There's also a `jobstatus` code, one of
+
+```
+const (
+	TBD JobStatus = iota
+	Started
+	Running
+	Finished
+	Errored
+)
+```
+
+Return code is only valid if `jobstatus` is `Finished` or `Errored`.
 
 ```
 {
