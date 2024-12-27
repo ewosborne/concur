@@ -276,7 +276,8 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (Comman
 	//pbar := progressbar.Default(int64(flags.Timeout.Seconds()))
 
 	// a jobcount pbar
-	pbar := progressbar.Default(int64(len(cmdList)))
+	pbar := progressbar.NewOptions(len(cmdList), progressbar.OptionSetVisibility(flags.Pbar))
+	pbar.RenderBlank() // to get it to render at 0% before any job finishes
 
 	// this option doesn't do what I thought it did.
 	// progressbar.OptionOnCompletion(func() {
@@ -307,6 +308,7 @@ Outer:
 	// Outer: breaks here
 
 	// this sleep is nice but it adds to the systemRunTime.
+	pbar.Finish()          // don't know if I need this.
 	time.Sleep(pbarFinish) // to let the pbar finish displaying.
 	return cmdMap, pbarFinish
 }
@@ -336,6 +338,7 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 	flags.Token, _ = cmd.Flags().GetString("token")
 	flags.FlagErrors, _ = cmd.Flags().GetBool("flag-errors")
 	flags.FirstZero, _ = cmd.Flags().GetBool("first")
+	flags.Pbar, _ = cmd.Flags().GetBool("pbar")
 	return flags
 }
 
