@@ -35,7 +35,8 @@ func ConcurCmdE(cmd *cobra.Command, args []string) error {
 	opts := args[1:]
 	flags := infra.PopulateFlags(cmd)
 
-	infra.ReportDone(infra.Do(command, opts, flags))
+	res := infra.Do(command, opts, flags)
+	infra.ReportDone(res, flags)
 
 	return nil
 }
@@ -56,7 +57,11 @@ func init() {
 	rootCmd.Flags().Int64P("timeout", "t", 0, "Timeout in sec (0 default for no timeout)")
 	rootCmd.Flags().StringP("token", "", "{{1}}", "Token to match for replacement")
 	rootCmd.Flags().BoolP("flag-errors", "", false, "Print a message to stderr for all executed commands with an exit code other than zero")
-	rootCmd.Flags().BoolP("pbar", "", false, "Display a progress bar which ticks up once per completed job")
+	rootCmd.Flags().BoolP("pbar", "p", false, "Display a progress bar which ticks up once per completed job")
+	rootCmd.Flags().BoolP("silent", "s", false, "Silent output")
+
+	rootCmd.MarkFlagsMutuallyExclusive("pbar", "silent")
+
 	rootCmd.PersistentFlags().StringVarP(&logLevelFlag, "log level", "l", "", "Enable debug mode (one of d, i, w, e)")
 	var logLevel slog.Level
 	var outStream io.Writer = os.Stderr

@@ -77,6 +77,7 @@ type Flags struct {
 	FlagErrors      bool
 	FirstZero       bool
 	Pbar            bool
+	Silent          bool
 }
 
 type CommandList []*Command
@@ -163,9 +164,12 @@ func GetJSONReport(res Results) (string, error) {
 	return string(jsonResults), nil
 }
 
-func ReportDone(res Results) {
+func ReportDone(res Results, flags Flags) {
 
 	// little fixup for printout but still fucky and I don't like it.
+	if flags.Silent {
+		return
+	}
 
 	jsonResults, err := GetJSONReport(res)
 	if err != nil {
@@ -330,6 +334,7 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 	flags.FlagErrors, _ = cmd.Flags().GetBool("flag-errors")
 	flags.FirstZero, _ = cmd.Flags().GetBool("first")
 	flags.Pbar, _ = cmd.Flags().GetBool("pbar")
+	flags.Silent, _ = cmd.Flags().GetBool("silent")
 	return flags
 }
 

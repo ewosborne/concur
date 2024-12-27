@@ -91,3 +91,15 @@ then test by calling Do(args)
 and a testscript that calls a slightly wrapped PrintOut()
 
 progress bar which tracks --timeout?  --pbar {jobs|time} maybe?
+
+
+doc cleanup
+
+maybe some output control - silent vs. json? wrap pbar up in that too?
+ all output to stdout except then how do I intermindle json and pbar?
+think this through.
+
+should silent still output errors?  yeah, I think so.
+what constitutes an error?  non-zero return code?  what if I have --first set?  is non-zero still an error?
+
+let's leave silent as-is.
