@@ -141,7 +141,7 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 
 type Results struct {
 	//Commands CommandMap  `json:"commands"`
-	Commands CommandList `json:"commands"`
+	Commands CommandList `json:"command"`
 
 	Info ResultsInfo `json:"info"`
 }

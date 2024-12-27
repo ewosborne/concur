@@ -5,9 +5,9 @@ I like what `parallel` can do.  As a network engineer, over the years I've had t
 
 You know what I don't like about `parallel`?  It's got defaults that don't work for me (one job per core when I'm blocking on network I/O is hugely inefficient). Its CLI is convoluted (yes, it's a hard problem to solve in general, but still). It's got a 120-page manual or a 20-minute training video to teach you how to use it.  It's written in Perl.  It has this weird thing where it can't do CSV right out of the box and you have to do manual CPAN stuff.  Ain't nobody got time for any of that. And worst of all, it has that weird gold-digging 'I agree under penalty of death to cite parallel in any academic work'. I get that it's reasonable to ask for credit for writing free software, but if everyone did that then the whole open source industry would drown itself in a pool of paperwork.
 
-So I give you `concur`. I'm never going to claim it's as fully featured as GNU parallel but it does the bits I need, it's a few hundred lines of go, it has sensible defaults for things which aren't compute-bound, it has easy to read json output. It can flag jobs which exit with a return code other than zero. It can run all your jobs, or it can stop when the first one teminates. It's got an easy syntax for subbing in the thing you're iterating over (each entry in a list of hosts, for example).
+So I give you `concur`. I'm never going to claim it's as fully featured as `parallel` but it does the bits I need, it's a few hundred lines of go, it has sensible defaults for things which aren't compute-bound, it has easy to read json output. It can flag jobs which exit with a return code other than zero. It can run all your jobs, or it can stop when the first one teminates. It's got an easy syntax for subbing in the thing you're iterating over (each entry in a list of hosts, for example).
 
-It doesn't do as many clever thins as `parallel` but it does the subset that I want and it does them well and it does them using `go's` built-in concurrency. Thus, `concur` (which as a verb is a [synonym](https://www.thesaurus.com/browse/parallel) for parallel).
+It doesn't do as many clever things as `parallel` but it does the subset that I want and it does them well and it does them using `go's` built-in concurrency. Thus, `concur` (which as a verb is a [synonym](https://www.thesaurus.com/browse/parallel) for parallel).
 
 This project is very much under active development so the screen scrapes here may not match what's in the latest code but it'll be close.
 
@@ -50,14 +50,14 @@ Here's an example which pings three different hosts:
 concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org
 ```
 
-This runs `ping -c 1` for each of those three web sites, replacing `{{1}}` with each in turn. It returns a JSON block to stdout, suitable for piping into `jq` or `gron`.  
+This runs `ping -c 1` for each of those three web sites, replacing `{{1}}` with each in turn. It returns JSON to stdout, suitable for piping into `jq` or `gron`.  It sometimes complains but all complains go to stderr so even if there are errors you still get clean JSON on stdout.
 
-There are two top-level keys in that JSON, `commands` and `info`.  `info` doesn't have much in it now but `SystemRuntime` tells you how long it took to finish everything. 
+There are two top-level keys in that JSON, `command` and `info`.  `info` doesn't have much in it now but `SystemRuntime` tells you how long it took to finish everything. 
 
-`commands` is where most of the fun is. Take a look at the example below. It's a list of information about each command which was run, sorted by runtime, fastest first.  This means that concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org | jq '.commands[0] | '.arg' + " " + .runtime'always gives you the host which responded first, but -- spoiler alert!  -- there's a flag for that.  `concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org --any` gives you the same thing, albeit the full JSON output, not just the runtime and argument name.
+`command` is where most of the fun is. Take a look at the example below. It's a list of information about each command which was run, sorted by runtime, fastest first.  This means that concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org | jq '.command[0] | '.arg' + " " + .runtime'always gives you the host which responded first, but -- spoiler alert!  -- there's a flag for that.  `concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org --any` gives you the same thing, albeit the full JSON output, not just the runtime and argument name.
 
 ```
-concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org | jq '.commands[0]
+concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org | jq '.command[0]
 ```
 
 Some things to note are: `stdout` is presented as an array, with each line of stdout a separate array element. `stderr` is stored the same way. The return code from the application is in `returncode` and the runtime for the command is `runtime`. There's also a `jobstatus` code, one of
@@ -79,7 +79,7 @@ Here's the full JSON output from that sample ping.
 
 ```
 {
- "commands": [
+ "command": [
   {
    "id": 0,
    "jobstatus": "Finished",
@@ -180,7 +180,7 @@ Here's the full JSON output from that sample ping.
 
 ```
 {
- "commands": [
+ "command": [
   {
    "id": 0,
    "jobstatus": "Finished",
@@ -276,7 +276,7 @@ There's a fixed 250ms delay after the last job runs so that you can see that the
 ```
 concur "sleep {{1}}" 1 2 3 4 5 -t 2
 context popped, 0 jobs done{
- "commands": [
+ "command": [
   {
    "id": 0,
    "jobstatus": "Finished",
