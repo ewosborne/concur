@@ -74,6 +74,7 @@ type Flags struct {
 	Token           string
 	FlagErrors      bool
 	FirstZero       bool
+	Pbar            bool
 }
 
 // for now, sometimes passed into things
@@ -122,12 +123,13 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 		flags.GoroutineLimit = len(cmdList)
 	}
 	// go run the things
-	completedCommands := command_loop(ctx, cmdList, flags)
+	completedCommands, pbarFinish := command_loop(ctx, cmdList, flags)
 
 	// finalizing
 	//   TODO: account for pbar display finish time
 	systemEndTime := time.Now()
 	systemRunTime := systemEndTime.Sub(systemStartTime)
+	systemRunTime = systemRunTime - pbarFinish
 
 	// return Results map
 	var res = Results{}
@@ -215,37 +217,16 @@ func executeSingleCommand(ctx context.Context, c *Command) {
 
 }
 
-func command_loop(ctx context.Context, cmdList CommandList, flags Flags) CommandMap {
+func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (CommandMap, time.Duration) {
 
 	// TODO if I'm going to get clever about concurrnetLimit being a string, maybe it's here?
 	var tokens = make(chan struct{}, flags.GoroutineLimit) // permission to run
 	var done = make(chan *Command)                         // where a command goes when it's done
 	var completedCommands CommandList                      // count all the done processes
 	var cmdMap = CommandMap{}
+	var pbarFinish = time.Duration(250 * time.Millisecond)
 
-	//fmt.Println("timeout", flags.Timeout.Seconds())
 	// launch all goroutines
-
-	/*
-		for progressbar I want two kinds
-			- jobcount
-				- ticks pbar.Add(1) every time a job is done
-			- timeout
-				- ticks pbar.Add(1) every second
-					- how do I do this?  time.NewTicker(1 * time.Second)
-				- if timeout is non-zero then end of bar is timeout
-				- if timeout is zeo then it's just a spinner
-	*/
-
-	/* TODO:
-	1. display only if --pbar is set
-	2. sort out logic for --pbar=time vs --pbar=job
-	*/
-
-	//pbar := progressbar.Default(int64(flags.Timeout.Seconds()))
-
-	// a jobcount pbar
-	pbar := progressbar.Default(int64(len(cmdList)))
 
 	for _, c := range cmdList {
 
@@ -275,6 +256,33 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) Command
 	// gather everything we want and then return
 	var completionCount int
 
+	/*
+		for progressbar I want two kinds
+			- jobcount
+				- ticks pbar.Add(1) every time a job is done
+			- timeout
+				- ticks pbar.Add(1) every second
+					- how do I do this?  time.NewTicker(1 * time.Second)
+				- if timeout is non-zero then end of bar is timeout
+				- if timeout is zeo then it's just a spinner
+	*/
+
+	/* TODO:
+	1. display only if --pbar is set
+	2. sort out logic for --pbar=time vs --pbar=job
+	3. test pbar?
+	*/
+
+	//pbar := progressbar.Default(int64(flags.Timeout.Seconds()))
+
+	// a jobcount pbar
+	pbar := progressbar.Default(int64(len(cmdList)))
+
+	// this option doesn't do what I thought it did.
+	// progressbar.OptionOnCompletion(func() {
+	// 	time.Sleep(pbarFinish)
+	// })
+
 Outer:
 	for completionCount != len(cmdMap) {
 
@@ -298,12 +306,9 @@ Outer:
 	}
 	// Outer: breaks here
 
-	// finish pbar?
-	pbar.Finish()
-
 	// this sleep is nice but it adds to the systemRunTime.
-	time.Sleep(250 * time.Millisecond) // to let the pbar finish displaying
-	return cmdMap
+	time.Sleep(pbarFinish) // to let the pbar finish displaying.
+	return cmdMap, pbarFinish
 }
 
 func PopulateFlags(cmd *cobra.Command) Flags {
