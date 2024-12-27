@@ -93,6 +93,7 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 	// do all the heavy lifting here
 	var ctx context.Context
 	var cancelCtx context.CancelFunc
+	var res = Results{}
 
 	flagErrors = flags.FlagErrors
 	systemStartTime := time.Now()
@@ -120,23 +121,19 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 		flags.GoroutineLimit = len(cmdList)
 	}
 	// go run the things
-	completedCommands, pbarFinish := command_loop(ctx, cmdList, flags)
+	completedCommands, pbarOffset := command_loop(ctx, cmdList, flags)
 
 	// finalizing
 	systemEndTime := time.Now()
 	systemRunTime := systemEndTime.Sub(systemStartTime)
-	systemRunTime = systemRunTime - pbarFinish
+	systemRunTime = systemRunTime - pbarOffset
 
 	// return Results map
-	var res = Results{}
-
 	res.Commands = completedCommands
 	res.Info.InternalSystemRunTime = systemRunTime
 	res.Info.CoroutineLimit = flags.GoroutineLimit
 
 	return res
-
-	//reportDone(completedCommands, systemRunTime, flags)
 }
 
 type Results struct {
@@ -184,12 +181,14 @@ func ReportDone(res Results) {
 
 func executeSingleCommand(ctx context.Context, c *Command) {
 
+	var outb, errb strings.Builder
+
+	// name is command name, args is slice of arguments to that command
 	f := strings.Fields(c.Substituted)
 	name, args := f[0], f[1:]
 
 	cmd := exec.CommandContext(ctx, name, args...)
 
-	var outb, errb strings.Builder
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
 
@@ -337,6 +336,7 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 
 func buildListOfCommands(command string, hosts []string, token string) (CommandList, error) {
 	// TODO I don't need a full template engine but should probably have something cooler than this.
+	// TODO rename hosts and host to something less specific
 
 	var ret CommandList
 	for _, host := range hosts {
