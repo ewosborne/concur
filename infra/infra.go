@@ -224,8 +224,11 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (Comman
 	var done = make(chan *Command)                         // where a command goes when it's done
 	var completedCommands CommandList                      // count all the done processes
 	var cmdMap = CommandMap{}
-	var pbarFinish = time.Duration(250 * time.Millisecond)
+	var pbarFinish time.Duration = 0
 
+	if flags.Pbar {
+		pbarFinish = time.Duration(250 * time.Millisecond)
+	}
 	// launch all goroutines
 
 	for _, c := range cmdList {
@@ -268,21 +271,13 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (Comman
 	*/
 
 	/* TODO:
-	1. display only if --pbar is set
 	2. sort out logic for --pbar=time vs --pbar=job
 	3. test pbar?
 	*/
 
-	//pbar := progressbar.Default(int64(flags.Timeout.Seconds()))
-
 	// a jobcount pbar
 	pbar := progressbar.NewOptions(len(cmdList), progressbar.OptionSetVisibility(flags.Pbar))
 	pbar.RenderBlank() // to get it to render at 0% before any job finishes
-
-	// this option doesn't do what I thought it did.
-	// progressbar.OptionOnCompletion(func() {
-	// 	time.Sleep(pbarFinish)
-	// })
 
 Outer:
 	for completionCount != len(cmdMap) {
@@ -307,7 +302,6 @@ Outer:
 	}
 	// Outer: breaks here
 
-	// this sleep is nice but it adds to the systemRunTime.
 	pbar.Finish()          // don't know if I need this.
 	time.Sleep(pbarFinish) // to let the pbar finish displaying.
 	return cmdMap, pbarFinish
