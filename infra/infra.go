@@ -114,7 +114,7 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 	// build a list of commands
 	cmdList, err := buildListOfCommands(command, substituteArgs, flags.Token)
 	if err != nil {
-		panic(err) // TODO fix
+		fmt.Fprint(os.Stderr, err)
 	}
 
 	// flag fixup.
@@ -167,7 +167,7 @@ func ReportDone(res Results, flags Flags) {
 
 	jsonResults, err := GetJSONReport(res)
 	if err != nil {
-		panic("todo fixme")
+		fmt.Fprint(os.Stderr, err)
 	}
 	fmt.Println(jsonResults)
 
@@ -316,7 +316,8 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 	default:
 		x, err := strconv.Atoi(flags.ConcurrentLimit)
 		if err != nil {
-			panic("bad flag number")
+			fmt.Fprintf(os.Stderr, "Invalid concurrency level: %s\n", flags.ConcurrentLimit)
+			os.Exit(1)
 		}
 		flags.GoroutineLimit = x
 	}
