@@ -238,7 +238,7 @@ Here's the full JSON output from that sample ping.
 
 `-c, --concurrent` is the maximum number of goroutines you can have working at once. It defaults to 128. Why? Well, you need *some* sensible default limit. `go` can run with hundreds of thousands of goroutines, those aren't the problem. But all those goroutines have to do something, and in this case they exec a process. Can you run 1e5 simulatneous `scp` commands?  Probably not. If your network bandwidth didn't all vanish you'd run out of file descriptors or sockets or some other OS resource.  So - default limit 128. You can change it if you like.  `-c 1` serializes everything and is good for testing. With a default of 128, if you give it more than 128 things to iterate over (more than 128 hosts to ping, for example) it will run the pings in batches of 128.
 
-Can you even have a command line that long?  I have no idea.
+I run [scaleTest.sh](this) as a sanity check scale test. It runs 500 `dig`s in parallel with no concurrency limit. It works fine (about half of those servers appear to be inactive now but that's OK), so the hard limit has to be north of 500. YMMV.
 
 `--flag-errors` will spit a message out to stdout for every command which returns but with a non-zero exit code.  This is useful for catching commands which ran but which weren't happy about it. Here's that ping example again but with a typo:
 
