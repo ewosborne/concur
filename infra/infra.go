@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -59,11 +60,12 @@ type Command struct {
 	Arg         string    `json:"arg"`
 	Stdout      []string  `json:"stdout"`
 	//Stdin       string    `json:"stdin"`
-	Stderr     []string  `json:"stderr"`
-	StartTime  time.Time `json:"starttime"`
-	EndTime    time.Time `json:"endtime"`
-	RunTime    string    `json:"runtime"`
-	ReturnCode int       `json:"returncode"`
+	Stderr           []string      `json:"stderr"`
+	StartTime        time.Time     `json:"starttime"`
+	EndTime          time.Time     `json:"endtime"`
+	RunTimePrintable string        `json:"runtime"`
+	RunTime          time.Duration `json:"-"` // msec runtime for sorting
+	ReturnCode       int           `json:"returncode"`
 }
 
 type Flags struct {
@@ -79,7 +81,8 @@ type Flags struct {
 
 type CommandList []*Command
 
-type CommandMap map[JobID]*Command
+// type CommandMap map[JobID]*Command
+type CommandMap map[int]*Command
 
 func (c Command) String() string {
 	b, _ := json.MarshalIndent(c, "", " ")
@@ -137,8 +140,10 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 }
 
 type Results struct {
-	Commands CommandMap  `json:"commands"`
-	Info     ResultsInfo `json:"info"`
+	//Commands CommandMap  `json:"commands"`
+	Commands CommandList `json:"commands"`
+
+	Info ResultsInfo `json:"info"`
 }
 
 type ResultsInfo struct {
@@ -224,12 +229,11 @@ func get_pbar(cmdList CommandList, flags Flags) *progressbar.ProgressBar {
 
 }
 
-func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (CommandMap, time.Duration) {
+func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (CommandList, time.Duration) {
 
 	var tokens = make(chan struct{}, flags.GoroutineLimit) // permission to run
 	var done = make(chan *Command)                         // where a command goes when it's done
 	var completedCommands CommandList                      // count all the done processes
-	var cmdMap = CommandMap{}
 	var pbarFinish time.Duration
 	var completionCount int
 
@@ -245,14 +249,14 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (Comman
 
 	for _, c := range cmdList {
 
-		cmdMap[c.ID] = c
 		go func() {
 			tokens <- struct{}{} // get permission to start
 			c.StartTime = time.Now()
 
 			executeSingleCommand(ctx, c)
 			c.EndTime = time.Now()
-			c.RunTime = c.EndTime.Sub(c.StartTime).String()
+			c.RunTime = c.EndTime.Sub(c.StartTime)
+			c.RunTimePrintable = c.RunTime.String()
 
 			done <- c // report status.
 			<-tokens  // return token when done.
@@ -261,12 +265,16 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (Comman
 	}
 
 	// collect all goroutines
+
+	doneList := CommandList{}
 Outer:
-	for completionCount != len(cmdMap) {
+	for completionCount != len(cmdList) {
 
 		select {
 		case c := <-done:
 			completionCount += 1
+			doneList = append(doneList, c)
+			//fmt.Println("appended", c.RunTime)
 
 			// this is for the job-based progressbar
 			// TODO: display substituted hostname in completion pbar?
@@ -275,7 +283,6 @@ Outer:
 				slog.Debug(fmt.Sprintf("returning %s", c.Arg))
 				// this only returns the single command we're interested in regardless of what other commands have done.
 				//  TODO is this what I want?  or do I want to return all commands but the other ones as NotStarted?
-				cmdMap = CommandMap{c.ID: c}
 				break Outer
 			}
 
@@ -286,9 +293,15 @@ Outer:
 	}
 	// Outer: breaks here
 
+	// sort doneList by completion time so .commands[0] is the fastest.
+	sort.Slice(doneList, func(i int, j int) bool {
+		return doneList[i].RunTime < doneList[j].RunTime
+	})
+
 	pbar.Finish()          // don't know if I need this.
 	time.Sleep(pbarFinish) // to let the pbar finish displaying.
-	return cmdMap, pbarFinish
+
+	return doneList, pbarFinish
 }
 
 func PopulateFlags(cmd *cobra.Command) Flags {
