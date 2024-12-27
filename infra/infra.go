@@ -211,6 +211,20 @@ func executeSingleCommand(ctx context.Context, c *Command) {
 
 }
 
+func get_pbar(cmdList CommandList, flags Flags) *progressbar.ProgressBar {
+	pbar := progressbar.NewOptions(len(cmdList),
+		progressbar.OptionSetVisibility(flags.Pbar),
+		progressbar.OptionSetItsString("jobs"), // doesn't do anything, don't know why
+		progressbar.OptionShowCount(),
+		progressbar.OptionSetWriter(os.Stderr),
+	)
+
+	pbar.RenderBlank() // to get it to render at 0% before any job finishes
+
+	return pbar
+
+}
+
 func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (CommandMap, time.Duration) {
 
 	var tokens = make(chan struct{}, flags.GoroutineLimit) // permission to run
@@ -218,10 +232,13 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (Comman
 	var completedCommands CommandList                      // count all the done processes
 	var cmdMap = CommandMap{}
 	var pbarFinish time.Duration
+	var completionCount int
 
+	// small fixed delay after printing the end of the pbar so we can see that it hit 100%
 	if flags.Pbar {
 		pbarFinish = time.Duration(250 * time.Millisecond)
 	}
+
 	// launch all goroutines
 
 	for _, c := range cmdList {
@@ -233,12 +250,7 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (Comman
 
 			executeSingleCommand(ctx, c)
 			c.EndTime = time.Now()
-			rt := c.EndTime.Sub(c.StartTime)
-			a, err := time.ParseDuration(rt.String())
-			if err != nil {
-				panic(err) // TODO
-			}
-			c.RunTime = a.String()
+			c.RunTime = c.EndTime.Sub(c.StartTime).String()
 
 			done <- c // report status.
 			<-tokens  // return token when done.
@@ -246,37 +258,24 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (Comman
 
 	}
 
-	// TODO should break this loop out into another function I guess.
-	// TODO should completionCount be a waitgroup? does it matter? maybe or maybe not
+	/*  TODO
+	for progressbar I want two kinds
+		- jobcount
+			- ticks pbar.Add(1) every time a job is done
+		- timeout
+			- ticks pbar.Add(1) every second
+				- how do I do this?  time.NewTicker(1 * time.Second)
+			- if timeout is non-zero then end of bar is timeout
+			- if timeout is zeo then it's just a spinner
 
-	// gather everything we want and then return
-	var completionCount int
-
-	/*
-		for progressbar I want two kinds
-			- jobcount
-				- ticks pbar.Add(1) every time a job is done
-			- timeout
-				- ticks pbar.Add(1) every second
-					- how do I do this?  time.NewTicker(1 * time.Second)
-				- if timeout is non-zero then end of bar is timeout
-				- if timeout is zeo then it's just a spinner
+	1. sort out logic for --pbar=time vs --pbar=job
+	2. test pbar somehow
 	*/
 
-	/* TODO:
-	2. sort out logic for --pbar=time vs --pbar=job
-	3. test pbar somehow
-	*/
+	// a jobcount pbar, doesn't print anything unless flags.Pbar is set
+	pbar := get_pbar(cmdList, flags)
 
-	// a jobcount pbar
-	pbar := progressbar.NewOptions(len(cmdList),
-		progressbar.OptionSetVisibility(flags.Pbar),
-		progressbar.OptionSetItsString("jobs"), // doesn't do anything, don't know why
-		progressbar.OptionShowCount(),
-		progressbar.OptionSetWriter(os.Stderr),
-	)
-	pbar.RenderBlank() // to get it to render at 0% before any job finishes
-
+	// collect all goroutines
 Outer:
 	for completionCount != len(cmdMap) {
 
@@ -289,13 +288,13 @@ Outer:
 			pbar.Add(1)
 			if flags.FirstZero || (flags.Any && c.ReturnCode == 0) {
 				slog.Debug(fmt.Sprintf("returning %s", c.Arg))
-				// this only returns the single command we're interested in.  TODO is that what I want?
+				// this only returns the single command we're interested in regardless of what other commands have done.
+				//  TODO is this what I want?  or do I want to return all commands but the other ones as NotStarted?
 				cmdMap = CommandMap{c.ID: c}
 				break Outer
 			}
 
 		case <-ctx.Done():
-			// TODO: what about pbar cleanup here? not sure I need to do anything.
 			fmt.Fprintf(os.Stderr, "context popped, %v jobs done", len(completedCommands))
 			break Outer
 		}
