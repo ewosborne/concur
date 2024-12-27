@@ -306,7 +306,3 @@ The `context popped` error comes out on stderr, so you can still pipe `concur` t
 Note that timeouts aren't perfect, they'll always be at least the value you specify plus a few milliseconds for `go` to catch up with paperwork and stuff. This means that sometimes a `sleep 2` with timeout of 2 will succeed and sometimes it'll fail.
 
 `--token` is the token I look for in the command string to tell me where to sub in a command paremeter. The default is the literal string `{{1}}`. This just a simple string substitution under the hood, not some fancy template engine.  You can change it to any pattern you like, e.g. `./concur "ping -c 1 @@@" www.mit.edu www.ucla.edu www.slashdot.org --token @@@`.  You can probably do Little Bobby Tables stuff with this if you try, but why would you do that to yourself?
-
-
-
-
