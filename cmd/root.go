@@ -49,11 +49,11 @@ func Execute() {
 }
 
 func init() {
-	//
+
 	rootCmd.Flags().Bool("any", false, "Return any (the first) command with exit code of zero")
 	rootCmd.Flags().Bool("first", false, "First command regardless of exit code")
 
-	rootCmd.Flags().StringP("concurrent", "c", "128", "Number of concurrent processes (0 = no limit), 'cpu' = one job per cpu core")
+	rootCmd.Flags().StringP("concurrent", "c", "128", "Number of concurrent processes (0 = no limit), 'cpu' or '1x' = one job per cpu core, '2x' = two jobs per cpu core")
 	rootCmd.Flags().Int64P("timeout", "t", 0, "Timeout in sec (0 default for no timeout)")
 	rootCmd.Flags().StringP("token", "", "{{1}}", "Token to match for replacement")
 	rootCmd.Flags().BoolP("flag-errors", "", false, "Print a message to stderr for all executed commands with an exit code other than zero")
