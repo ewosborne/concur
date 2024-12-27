@@ -100,8 +100,6 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 	flagErrors = flags.FlagErrors
 	systemStartTime := time.Now()
 
-	// TODO: pass flags in as float in seconds, convert to integer msec
-
 	switch flags.Timeout {
 	case 0:
 		ctx, cancelCtx = context.WithCancel(context.Background())
@@ -126,7 +124,6 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 	completedCommands, pbarFinish := command_loop(ctx, cmdList, flags)
 
 	// finalizing
-	//   TODO: account for pbar display finish time
 	systemEndTime := time.Now()
 	systemRunTime := systemEndTime.Sub(systemStartTime)
 	systemRunTime = systemRunTime - pbarFinish
@@ -155,7 +152,6 @@ type ResultsInfo struct {
 }
 
 func GetJSONReport(res Results) (string, error) {
-	// TODO how do I display runtime as a string?
 	//res.Info.InternalSystemRunTime = res.Info.InternalSystemRunTime / time.Millisecond
 	res.Info.SystemRuntime = res.Info.InternalSystemRunTime.Truncate(time.Millisecond).String()
 	jsonResults, err := json.MarshalIndent(res, "", " ")
@@ -219,7 +215,6 @@ func executeSingleCommand(ctx context.Context, c *Command) {
 
 func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (CommandMap, time.Duration) {
 
-	// TODO if I'm going to get clever about concurrnetLimit being a string, maybe it's here?
 	var tokens = make(chan struct{}, flags.GoroutineLimit) // permission to run
 	var done = make(chan *Command)                         // where a command goes when it's done
 	var completedCommands CommandList                      // count all the done processes
@@ -272,11 +267,15 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (Comman
 
 	/* TODO:
 	2. sort out logic for --pbar=time vs --pbar=job
-	3. test pbar?
+	3. test pbar somehow
 	*/
 
 	// a jobcount pbar
-	pbar := progressbar.NewOptions(len(cmdList), progressbar.OptionSetVisibility(flags.Pbar))
+	pbar := progressbar.NewOptions(len(cmdList),
+		progressbar.OptionSetVisibility(flags.Pbar),
+		progressbar.OptionSetItsString("jobs"),
+		progressbar.OptionShowCount(),
+	)
 	pbar.RenderBlank() // to get it to render at 0% before any job finishes
 
 Outer:
@@ -296,6 +295,7 @@ Outer:
 			}
 
 		case <-ctx.Done():
+			// TODO: what about pbar cleanup here? not sure I need to do anything.
 			fmt.Fprintf(os.Stderr, "context popped, %v jobs done", len(completedCommands))
 			break Outer
 		}
