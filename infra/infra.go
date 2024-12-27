@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 )
 
@@ -184,7 +185,7 @@ func ReportDone(res Results) {
 
 }
 
-func execute(ctx context.Context, c *Command) {
+func executeSingleCommand(ctx context.Context, c *Command) {
 
 	f := strings.Fields(c.Substituted)
 	name, args := f[0], f[1:]
@@ -221,14 +222,23 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) Command
 	var completedCommands CommandList                      // count all the done processes
 	var cmdMap = CommandMap{}
 
+	fmt.Println("timeout", flags.Timeout.Seconds())
 	// launch all goroutines
 	for _, c := range cmdList {
+
+		//pbar = progressbar.Default(int64(len(cmdList)))
+		//pbar := progressbar.Default(int64(flags.Timeout.Seconds()))
+		//a := int64(flags.Timeout.Seconds())
+		a := int64(len(cmdList))
+		fmt.Println("limit", a)
+		pbar := progressbar.Default(a)
+
 		cmdMap[c.ID] = c
 		go func() {
 			tokens <- struct{}{} // get permission to start
 			c.StartTime = time.Now()
 
-			execute(ctx, c)
+			executeSingleCommand(ctx, c)
 			c.EndTime = time.Now()
 			rt := c.EndTime.Sub(c.StartTime)
 			a, err := time.ParseDuration(rt.String())
@@ -238,7 +248,8 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) Command
 			c.RunTime = a.String()
 
 			done <- c // report status.
-			<-tokens  // return token when done.
+			pbar.Add(1)
+			<-tokens // return token when done.
 		}()
 
 	}
