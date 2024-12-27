@@ -125,6 +125,7 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 	completedCommands := command_loop(ctx, cmdList, flags)
 
 	// finalizing
+	//   TODO: account for pbar display finish time
 	systemEndTime := time.Now()
 	systemRunTime := systemEndTime.Sub(systemStartTime)
 
@@ -222,16 +223,31 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) Command
 	var completedCommands CommandList                      // count all the done processes
 	var cmdMap = CommandMap{}
 
-	fmt.Println("timeout", flags.Timeout.Seconds())
+	//fmt.Println("timeout", flags.Timeout.Seconds())
 	// launch all goroutines
-	for _, c := range cmdList {
 
-		//pbar = progressbar.Default(int64(len(cmdList)))
-		//pbar := progressbar.Default(int64(flags.Timeout.Seconds()))
-		//a := int64(flags.Timeout.Seconds())
-		a := int64(len(cmdList))
-		fmt.Println("limit", a)
-		pbar := progressbar.Default(a)
+	/*
+		for progressbar I want two kinds
+			- jobcount
+				- ticks pbar.Add(1) every time a job is done
+			- timeout
+				- ticks pbar.Add(1) every second
+					- how do I do this?  time.NewTicker(1 * time.Second)
+				- if timeout is non-zero then end of bar is timeout
+				- if timeout is zeo then it's just a spinner
+	*/
+
+	/* TODO:
+	1. display only if --pbar is set
+	2. sort out logic for --pbar=time vs --pbar=job
+	*/
+
+	//pbar := progressbar.Default(int64(flags.Timeout.Seconds()))
+
+	// a jobcount pbar
+	pbar := progressbar.Default(int64(len(cmdList)))
+
+	for _, c := range cmdList {
 
 		cmdMap[c.ID] = c
 		go func() {
@@ -248,8 +264,7 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) Command
 			c.RunTime = a.String()
 
 			done <- c // report status.
-			pbar.Add(1)
-			<-tokens // return token when done.
+			<-tokens  // return token when done.
 		}()
 
 	}
@@ -267,6 +282,8 @@ Outer:
 		case c := <-done:
 			completionCount += 1
 
+			// this is for the job-based progressbar
+			pbar.Add(1)
 			if flags.FirstZero || (flags.Any && c.ReturnCode == 0) {
 				slog.Debug(fmt.Sprintf("returning %s", c.Arg))
 				// this only returns the single command we're interested in.  TODO is that what I want?
@@ -280,6 +297,12 @@ Outer:
 		}
 	}
 	// Outer: breaks here
+
+	// finish pbar?
+	pbar.Finish()
+
+	// this sleep is nice but it adds to the systemRunTime.
+	time.Sleep(250 * time.Millisecond) // to let the pbar finish displaying
 	return cmdMap
 }
 
