@@ -238,6 +238,9 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (Comman
 		pbarFinish = time.Duration(250 * time.Millisecond)
 	}
 
+	// a jobcount pbar, doesn't print anything unless flags.Pbar is set
+	pbar := get_pbar(cmdList, flags)
+
 	// launch all goroutines
 
 	for _, c := range cmdList {
@@ -256,23 +259,6 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (Comman
 		}()
 
 	}
-
-	/*  TODO
-	for progressbar I want two kinds
-		- jobcount
-			- ticks pbar.Add(1) every time a job is done
-		- timeout
-			- ticks pbar.Add(1) every second
-				- how do I do this?  time.NewTicker(1 * time.Second)
-			- if timeout is non-zero then end of bar is timeout
-			- if timeout is zeo then it's just a spinner
-
-	1. sort out logic for --pbar=time vs --pbar=job
-	2. test pbar somehow
-	*/
-
-	// a jobcount pbar, doesn't print anything unless flags.Pbar is set
-	pbar := get_pbar(cmdList, flags)
 
 	// collect all goroutines
 Outer:
