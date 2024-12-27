@@ -131,7 +131,7 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 	var res = Results{}
 
 	res.Commands = completedCommands
-	res.Info.SystemRunTime = systemRunTime
+	res.Info.InternalSystemRunTime = systemRunTime
 	res.Info.CoroutineLimit = flags.GoroutineLimit
 
 	return res
@@ -145,12 +145,15 @@ type Results struct {
 }
 
 type ResultsInfo struct {
-	CoroutineLimit int
-	SystemRunTime  time.Duration
+	CoroutineLimit        int
+	InternalSystemRunTime time.Duration `json:"-"`
+	SystemRuntime         string
 }
 
 func GetJSONReport(res Results) (string, error) {
-	res.Info.SystemRunTime = res.Info.SystemRunTime / time.Millisecond
+	// TODO how do I display runtime as a string?
+	//res.Info.InternalSystemRunTime = res.Info.InternalSystemRunTime / time.Millisecond
+	res.Info.SystemRuntime = res.Info.InternalSystemRunTime.Truncate(time.Millisecond).String()
 	jsonResults, err := json.MarshalIndent(res, "", " ")
 	if err != nil {
 		slog.Error("error marshaling results")

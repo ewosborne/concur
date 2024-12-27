@@ -52,10 +52,10 @@ func Test_DoBySleeping(t *testing.T) {
 		t.Log("so far", results.Info)
 
 		// what to sanity check?
-		srt := results.Info.SystemRunTime
+		srt := results.Info.InternalSystemRunTime
 		if (srt < entry.LowEst) || (srt > entry.HighEst) {
 			//if srt < entry.LowEst || srt > entry.HighEst {
-			t.Errorf("system runtime %v not withing range low:%v high:%v", results.Info.SystemRunTime, entry.LowEst, entry.HighEst)
+			t.Errorf("system runtime %v not withing range low:%v high:%v", results.Info.InternalSystemRunTime, entry.LowEst, entry.HighEst)
 		}
 
 		// do I even do anything with jsonresults?
