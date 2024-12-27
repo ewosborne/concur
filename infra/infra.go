@@ -77,15 +77,12 @@ type Flags struct {
 	Pbar            bool
 }
 
-// for now, sometimes passed into things
-//
-//	TODO do away with this and just use CommandMap and range over it?
 type CommandList []*Command
 
 type CommandMap map[JobID]*Command
 
 func (c Command) String() string {
-	b, _ := json.MarshalIndent(c, "", " ") // TODO clean this up, particularly RunTime
+	b, _ := json.MarshalIndent(c, "", " ")
 	return string(b)
 
 }
@@ -116,7 +113,9 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 		panic(err) // TODO fix
 	}
 
-	// flag fixup
+	// flag fixup.
+	// need this here because PopulateFlags doesn't get cmdList.
+	// TODO this is messy and in need of cleanup
 	if flags.GoroutineLimit == 0 {
 		flags.GoroutineLimit = len(cmdList)
 	}
@@ -152,7 +151,6 @@ type ResultsInfo struct {
 }
 
 func GetJSONReport(res Results) (string, error) {
-	//res.Info.InternalSystemRunTime = res.Info.InternalSystemRunTime / time.Millisecond
 	res.Info.SystemRuntime = res.Info.InternalSystemRunTime.Truncate(time.Millisecond).String()
 	jsonResults, err := json.MarshalIndent(res, "", " ")
 	if err != nil {
@@ -219,7 +217,7 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (Comman
 	var done = make(chan *Command)                         // where a command goes when it's done
 	var completedCommands CommandList                      // count all the done processes
 	var cmdMap = CommandMap{}
-	var pbarFinish time.Duration = 0
+	var pbarFinish time.Duration
 
 	if flags.Pbar {
 		pbarFinish = time.Duration(250 * time.Millisecond)
@@ -273,8 +271,9 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (Comman
 	// a jobcount pbar
 	pbar := progressbar.NewOptions(len(cmdList),
 		progressbar.OptionSetVisibility(flags.Pbar),
-		progressbar.OptionSetItsString("jobs"),
+		progressbar.OptionSetItsString("jobs"), // doesn't do anything, don't know why
 		progressbar.OptionShowCount(),
+		progressbar.OptionSetWriter(os.Stderr),
 	)
 	pbar.RenderBlank() // to get it to render at 0% before any job finishes
 
@@ -286,6 +285,7 @@ Outer:
 			completionCount += 1
 
 			// this is for the job-based progressbar
+			// TODO: display substituted hostname in completion pbar?
 			pbar.Add(1)
 			if flags.FirstZero || (flags.Any && c.ReturnCode == 0) {
 				slog.Debug(fmt.Sprintf("returning %s", c.Arg))
