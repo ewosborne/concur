@@ -100,9 +100,4 @@ sort values then add in that order? yeah, I think so
   put them in the return dict where key is speed lowest ranking, val is the output
 spit out order in the metadata section?
 
-progress bar with flag - time-limited if timeout set, otherwise spinner.
-yacspin? pass in an index to spinner style.
-https://github.com/schollz/progressbar
-both depending on timeout or not?
-
-maybe just progressbar.  time if timeout given, job count otherwise.
+progress bar which tracks --timeout?  --pbar {jobs|time} maybe?
