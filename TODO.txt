@@ -91,3 +91,23 @@ then test by calling Do(args)
 and a testscript that calls a slightly wrapped PrintOut()
 
 this is ok but how do I print SystemRunTime as time.Duration?  results.info is getting overloaded.
+
+
+
+return list of hosts to user in order, fastest first.
+problem is they're keyed in a dict.
+sort values then add in that order? yeah, I think so
+  they're all sorted by id or random or whatever.
+  assemble all results into a list
+  sort that list with a cutom sort function
+  assign ordinal to each one
+  put them in the return dict where key is speed lowest ranking, val is the output
+spit out order in the metadata section?
+
+
+in output json, display system runtime as time.Duration not msec
+
+progress bar with flag - time-limited if timeout set, otherwise spinner.
+yacspin?
+https://github.com/schollz/progressbar
+both depending on timeout or not?
