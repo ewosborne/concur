@@ -3,7 +3,6 @@ export bin := "concur"
 set dotenv-load := false
 
 # test for quoted args to work, didn't do anything. doesn't matter much.
-
 #set positional-arguments := true
 
 default:
@@ -31,7 +30,6 @@ fmt:
 
 mac: test build
 
-
 clean:
     go clean -testcache
     go mod tidy
@@ -49,7 +47,7 @@ require-env:
     fi
 
 release arg1: require-env testv
-   rm -rf dist/
-   git tag {{ arg1 }}
-   git push origin {{ arg1 }}
-   goreleaser release
+    rm -rf dist/
+    git tag {{ arg1 }}
+    git push origin {{ arg1 }}
+    goreleaser release
