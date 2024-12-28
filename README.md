@@ -69,10 +69,7 @@ eric@Erics-MacBook-Air concur % echo "foo bar baz" | concur "touch /tmp/{{1}}.fo
 ...
 ...
 eric@Erics-MacBook-Air concur % ls /tmp/*foo
-zsh: no matches found: /tmp/*foo
-eric@Erics-MacBook-Air concur % echo "foo bar baz" | concur "touch /tmp/{{1}}.foo"
-{
- "command": [
+/tmp/bar.foo  /tmp/baz.foo  /tmp/foo.foo
 ```
 
 ## Example
