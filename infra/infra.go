@@ -336,8 +336,6 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 		fmt.Fprintf(os.Stderr, "invalid timeout %v", tmp)
 		os.Exit(1)
 	}
-	fmt.Println("before", tmp, "after", flags.Timeout)
-
 	flags.Token, _ = cmd.Flags().GetString("token")
 	flags.FlagErrors, _ = cmd.Flags().GetBool("flag-errors")
 	flags.FirstZero, _ = cmd.Flags().GetBool("first")
