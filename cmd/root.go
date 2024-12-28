@@ -75,7 +75,7 @@ func init() {
 
 	rootCmd.Flags().StringP("concurrent", "c", "128",
 		"Number of concurrent processes (0 = no limit), 'cpu' or '1x' = one job per cpu core, '2x' = two jobs per cpu core")
-	rootCmd.Flags().StringP("timeout", "t", "0", "Timeout in sec (0 default for no timeout)")
+	rootCmd.Flags().StringP("timeout", "t", "0", "Timeout in time.Duration format (0 default for no timeout)")
 	rootCmd.Flags().StringP("token", "", "{{1}}", "Token to match for replacement")
 	rootCmd.Flags().BoolP("flag-errors", "", false, "Print a message to stderr for all executed commands with an exit code other than zero")
 	rootCmd.Flags().BoolP("pbar", "p", false, "Display a progress bar which ticks up once per completed job")
