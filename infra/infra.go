@@ -69,14 +69,14 @@ type Command struct {
 }
 
 type Flags struct {
-	Any             bool
-	ConcurrentLimit string
-	GoroutineLimit  int // derived from ConcurrencyLimit
-	Timeout         time.Duration
-	Token           string
-	FlagErrors      bool
-	FirstZero       bool
-	Pbar            bool
+	Any                bool
+	ConcurrentJobLimit string
+	GoroutineLimit     int // derived from ConcurrentJobLimit
+	Timeout            time.Duration
+	Token              string
+	FlagErrors         bool
+	FirstZero          bool
+	Pbar               bool
 }
 
 type CommandList []*Command
@@ -92,7 +92,7 @@ func (c Command) String() string {
 
 var flagErrors bool
 
-func Do(command string, substituteArgs []string, flags Flags) Results {
+func Do(template string, targets []string, flags Flags) Results {
 	// do all the heavy lifting here
 	var ctx context.Context
 	var cancelCtx context.CancelFunc
@@ -112,8 +112,8 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 
 	defer cancelCtx()
 
-	// build a list of commands
-	cmdList, err := buildListOfCommands(command, substituteArgs, flags.Token)
+	// build a list of commandsToRun
+	commandsToRun, err := buildListOfCommands(template, targets, flags.Token)
 	if err != nil {
 		fmt.Fprint(os.Stderr, err)
 	}
@@ -122,10 +122,10 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 	// need this here because PopulateFlags doesn't get cmdList.
 	// TODO this is messy and in need of cleanup
 	if flags.GoroutineLimit == 0 {
-		flags.GoroutineLimit = len(cmdList)
+		flags.GoroutineLimit = len(commandsToRun)
 	}
 	// go run the things
-	completedCommands, pbarOffset := command_loop(ctx, cmdList, flags)
+	completedCommands, pbarOffset := command_loop(ctx, commandsToRun, flags)
 
 	// finalizing
 	systemEndTime := time.Now()
@@ -136,7 +136,7 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 	res.Commands = completedCommands
 	res.Info.InternalSystemRunTime = systemRunTime
 	res.Info.CoroutineLimit = flags.GoroutineLimit
-	res.Info.OriginalCommand = command
+	res.Info.OriginalCommand = template
 	res.Info.Timeout = flags.Timeout
 
 	return res
@@ -152,13 +152,13 @@ type Results struct {
 type ResultsInfo struct {
 	CoroutineLimit        int           `json:"coroutineLimit"`
 	InternalSystemRunTime time.Duration `json:"-"`
-	SystemRuntime         string        `json:"systemRuntime"`
+	SystemRuntimeString   string        `json:"systemRuntime"`
 	OriginalCommand       string        `json:"originalCommand"`
 	Timeout               time.Duration `json:"timeout"`
 }
 
 func GetJSONReport(res Results) (string, error) {
-	res.Info.SystemRuntime = res.Info.InternalSystemRunTime.Truncate(time.Millisecond).String()
+	res.Info.SystemRuntimeString = res.Info.InternalSystemRunTime.Truncate(time.Millisecond).String()
 	jsonResults, err := json.MarshalIndent(res, "", " ")
 	if err != nil {
 		slog.Error("error marshaling results")
@@ -232,7 +232,7 @@ func get_pbar(cmdList CommandList, flags Flags) *progressbar.ProgressBar {
 
 }
 
-func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (CommandList, time.Duration) {
+func command_loop(ctx context.Context, commandsToRun CommandList, flags Flags) (CommandList, time.Duration) {
 
 	var tokens = make(chan struct{}, flags.GoroutineLimit) // permission to run
 	var done = make(chan *Command)                         // where a command goes when it's done
@@ -246,11 +246,11 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (Comman
 	}
 
 	// a jobcount pbar, doesn't print anything unless flags.Pbar is set
-	pbar := get_pbar(cmdList, flags)
+	pbar := get_pbar(commandsToRun, flags)
 
 	// launch all goroutines
 
-	for _, c := range cmdList {
+	for _, c := range commandsToRun {
 
 		go func() {
 			tokens <- struct{}{} // get permission to start
@@ -271,21 +271,17 @@ func command_loop(ctx context.Context, cmdList CommandList, flags Flags) (Comman
 
 	doneList := CommandList{}
 Outer:
-	for completionCount != len(cmdList) {
+	for completionCount != len(commandsToRun) {
 
 		select {
 		case c := <-done:
 			completionCount += 1
 			doneList = append(doneList, c)
-			//fmt.Println("appended", c.RunTime)
-
-			// this is for the job-based progressbar
-			// TODO: display substituted hostname in completion pbar?
 			pbar.Add(1)
 			if flags.FirstZero || (flags.Any && c.ReturnCode == 0) {
 				slog.Debug(fmt.Sprintf("returning %s", c.Arg))
 				// this only returns the single command we're interested in regardless of what other commands have done.
-				//  TODO is this what I want?  or do I want to return all commands but the other ones as NotStarted?
+				//  TODO is this what I want?  or do I want to return all commands but the other ones as NotStarted / whatever?
 				break Outer
 			}
 
@@ -311,23 +307,22 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 	flags := Flags{}
 	// I sure wish there was a cleaner way to do this
 	flags.Any, _ = cmd.Flags().GetBool("any")
-	flags.ConcurrentLimit, _ = cmd.Flags().GetString("concurrent")
+	flags.ConcurrentJobLimit, _ = cmd.Flags().GetString("concurrent")
 
-	switch flags.ConcurrentLimit {
+	switch flags.ConcurrentJobLimit {
 	case "cpu", "1x":
 		flags.GoroutineLimit = runtime.NumCPU()
 	case "2x":
 		flags.GoroutineLimit = runtime.NumCPU() * 2
 	default:
-		x, err := strconv.Atoi(flags.ConcurrentLimit)
+		x, err := strconv.Atoi(flags.ConcurrentJobLimit)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Invalid concurrency level: %s\n", flags.ConcurrentLimit)
+			fmt.Fprintf(os.Stderr, "Invalid concurrency level: %s\n", flags.ConcurrentJobLimit)
 			os.Exit(1)
 		}
 		flags.GoroutineLimit = x
 	}
 
-	//tmp, _ := cmd.Flags().GetInt64("timeout")
 	tmp, _ := cmd.Flags().GetString("timeout")
 
 	ft, err := time.ParseDuration(tmp)
@@ -343,15 +338,14 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 	return flags
 }
 
-func buildListOfCommands(command string, hosts []string, token string) (CommandList, error) {
+func buildListOfCommands(command string, targets []string, token string) (CommandList, error) {
 	// TODO I don't need a full template engine but should probably have something cooler than this.
-	// TODO rename hosts and host to something less specific
 
 	var ret CommandList
-	for _, host := range hosts {
+	for _, target := range targets {
 		x := Command{}
-		x.Arg = host
-		x.Substituted = strings.ReplaceAll(command, token, host)
+		x.Arg = target
+		x.Substituted = strings.ReplaceAll(command, token, target)
 		x.Status = TBD
 		x.ID = id
 
@@ -379,13 +373,10 @@ func GetStdin() ([]string, bool) {
 
 		bytes, _ := io.ReadAll(os.Stdin)
 		str := string(bytes)
-		//fmt.Println(str, len(str))
 
-		// TODO: think about this.  would I ever want
-		//  a multi-word arg?
+		// .Fields() breaks the input string into separate words.  That seems ok but maybe it's not quite right?
 		return strings.Fields(str), true
-	} else {
-		//fmt.Println("reading from terminal")
 	}
+
 	return nil, false
 }
