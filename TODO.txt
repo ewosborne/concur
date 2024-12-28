@@ -76,5 +76,3 @@ progress bar which tracks --timeout?  --pbar {jobs|time} maybe?
 
 
 doc cleanup
-
-read list of arg hosts from stdin (pipe)?
