@@ -56,6 +56,25 @@ Flags:
 Concur takes some mandatory arguments. The first is the command you wish to run concurrently.  All subsequent arguments are whatever it is you want to change about what you run in parallel. It queues up all jobs and runs them on a number of worker goroutines until all jobs have finished - you control this number with `-c/--concurrent`. There is no timeout but you can add one with `--timeout`. There are also a couple of options to return before all jobs are done - `--any` and `--first`, see below.
 And `--pbar` displays a progress bar which counts off as jobs finish. I find this useful for longer running jobs like `scp`ing a file to a bunch of hosts.
 
+`concur` also takes targets via `stdin`:
+
+
+```
+eric@Erics-MacBook-Air concur % ls /tmp/*foo
+zsh: no matches found: /tmp/*foo
+eric@Erics-MacBook-Air concur % echo "foo bar baz" | concur "touch /tmp/{{1}}.foo"
+{
+ "command": [
+...
+...
+...
+eric@Erics-MacBook-Air concur % ls /tmp/*foo
+zsh: no matches found: /tmp/*foo
+eric@Erics-MacBook-Air concur % echo "foo bar baz" | concur "touch /tmp/{{1}}.foo"
+{
+ "command": [
+```
+
 ## Example
 Here's an example which pings three different hosts:
 
