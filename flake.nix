@@ -27,7 +27,7 @@
             pkgs.buildGoModule {
               pname = "concur";
               src = ./.;
-              version = "0.4.1";
+              version = builtins.readFile ./.version;
 
               # Must be updated when dependencies are updated
               vendorHash = "sha256-SESMSCNoiKu0aUyZhatMWyGnd9Q+qlnTOG274m3ydCI="; 
