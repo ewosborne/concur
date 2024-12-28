@@ -30,10 +30,10 @@ var tt = []SleepNumber{
 var sleepCommand = "sleep {{1}}"
 
 var sleepFlags = infra.Flags{
-	ConcurrentLimit: "128",
-	GoroutineLimit:  128,
-	Timeout:         time.Duration(90 * time.Second),
-	Token:           "{{1}}",
+	ConcurrentJobLimit: "128",
+	GoroutineLimit:     128,
+	Timeout:            time.Duration(90 * time.Second),
+	Token:              "{{1}}",
 }
 
 // TODO more tests.  tests concurrency params, --any and --first, etc.

@@ -13,3 +13,19 @@ package things: nix, aqua, brew, mise.
 clean up code, make it testable
 
 TEST.
+
+come up with consistent terminology and spread it around
+  arg - something internal, don't use it, shades of argv/argc.
+  template - the task before substitution
+  command - the fully built thing
+  target - the thing we iterate over
+  job - the running of a command
+
+  "ping -c 1 {{1}}" foo bar baz
+
+  one template, "ping -c {{{1}}}"
+  three targes - foo, bar, baz
+  yields three tasks - the combined string
+  as each task is run it's  ajob
+  
+

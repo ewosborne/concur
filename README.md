@@ -24,6 +24,8 @@ You may want to build from scratch. I use [just](https://just.systems/) to manag
 
 You can do that too, or you can just run`go build`.
 
+If you prefer, you can grab a pre-built binary from the [latest release](https://github.com/ewosborne/concur/releases/tag/v0.4.1).
+
 # usage
 
 ````
