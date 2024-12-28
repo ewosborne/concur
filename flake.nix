@@ -29,7 +29,8 @@
               src = ./.;
               version = "0.0.1";
 
-              vendorHash = "sha256-SESMSCNoiKu0aUyZhatMWyGnd9Q+qlnTOG274m3ydCI=";
+              # Must be updated when dependencies are updated
+              vendorHash = "sha256-SESMSCNoiKu0aUyZhatMWyGnd9Q+qlnTOG274m3ydCI="; 
 
               doCheck = false;
 
