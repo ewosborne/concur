@@ -31,3 +31,5 @@ dist/metadata.json
 dist/concur_darwin_arm64_v8.0/concur
 foo.txt
 out-scaleTest.json
+result
+
