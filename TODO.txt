@@ -76,8 +76,6 @@ progress bar which tracks --timeout?  --pbar {jobs|time} maybe?
 
 doc cleanup
 
-time.Duration syntax for --timeout
-
 per-job vs overall timeout 
   per-job: if a job takes too long, kill it but keep processing
   overall: when we hit this absolute limit, kill everything
