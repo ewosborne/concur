@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"math/rand"
 	"os"
@@ -357,4 +358,22 @@ func buildListOfCommands(command string, hosts []string, token string) (CommandL
 	})
 
 	return ret, nil
+}
+
+// return whether there's something to read on stdin
+func GetStdin() ([]string, bool) {
+
+	fi, _ := os.Stdin.Stat()
+
+	if (fi.Mode() & os.ModeCharDevice) == 0 {
+		fmt.Println("reading from stdin")
+
+		bytes, _ := io.ReadAll(os.Stdin)
+		str := string(bytes)
+		fmt.Println(str)
+		return strings.Fields(str), true
+	} else {
+		fmt.Println("reading from terminal")
+	}
+	return nil, false
 }

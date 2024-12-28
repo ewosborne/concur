@@ -25,17 +25,37 @@ var rootCmd = &cobra.Command{
 
 func ConcurCmdE(cmd *cobra.Command, args []string) error {
 
-	switch len(args) {
-	case 0, 1: // 0 == command name only, 1 == string to run in but nothing to sub into it
-		cmd.Help()
-		os.Exit(1)
+	var items []string
+	var command string
+
+	// if stdin
+	// then stdinArgs are the items to iterate over
+	// and args is the command
+	// if not stdin
+	// then command is arg[0]
+	// and items is arg[1:]
+	// do something with stdin here?
+	stdinArgs, ok := infra.GetStdin()
+	if ok {
+		items = stdinArgs
+		command = args[0]
+	} else {
+		switch len(args) {
+		case 0, 1: // 0 == command name only, 1 == string to run in but nothing to sub into it
+			cmd.Help()
+			os.Exit(1)
+		}
+		command = args[0]
+		items = args[1:]
 	}
 
-	command := args[0]
-	opts := args[1:]
+	//fmt.Println("command", command, "items", items, len(items))
+	//fmt.Println("items", items, len(items))
+	//os.Exit(0)
+
 	flags := infra.PopulateFlags(cmd)
 
-	res := infra.Do(command, opts, flags)
+	res := infra.Do(command, items, flags)
 	infra.ReportDone(res, flags)
 
 	return nil
