@@ -24,6 +24,8 @@ You may want to build from scratch. I use [just](https://just.systems/) to manag
 
 You can do that too, or you can just run`go build`.
 
+A [nix](https://nixos.org/) flake has been provided, run `nix shell github:ewosborne/concur` / `nix profile install github:ewosborne/concur` or clone and run `nix build` in git repo.
+
 # usage
 
 ````
