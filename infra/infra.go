@@ -101,6 +101,7 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 	flagErrors = flags.FlagErrors
 	systemStartTime := time.Now()
 
+	//fmt.Println("switching on timeout", flags.Timeout)
 	switch flags.Timeout {
 	case 0:
 		ctx, cancelCtx = context.WithCancel(context.Background())
@@ -136,6 +137,7 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 	res.Info.InternalSystemRunTime = systemRunTime
 	res.Info.CoroutineLimit = flags.GoroutineLimit
 	res.Info.OriginalCommand = command
+	res.Info.Timeout = flags.Timeout
 
 	return res
 }
@@ -152,6 +154,7 @@ type ResultsInfo struct {
 	InternalSystemRunTime time.Duration `json:"-"`
 	SystemRuntime         string        `json:"systemRuntime"`
 	OriginalCommand       string        `json:"originalCommand"`
+	Timeout               time.Duration `json:"timeout"`
 }
 
 func GetJSONReport(res Results) (string, error) {
@@ -324,8 +327,16 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 		flags.GoroutineLimit = x
 	}
 
-	tmp, _ := cmd.Flags().GetInt64("timeout")
-	flags.Timeout = time.Duration(tmp) * time.Second
+	//tmp, _ := cmd.Flags().GetInt64("timeout")
+	tmp, _ := cmd.Flags().GetString("timeout")
+
+	ft, err := time.ParseDuration(tmp)
+	flags.Timeout = ft
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "invalid timeout %v", tmp)
+		os.Exit(1)
+	}
+	fmt.Println("before", tmp, "after", flags.Timeout)
 
 	flags.Token, _ = cmd.Flags().GetString("token")
 	flags.FlagErrors, _ = cmd.Flags().GetBool("flag-errors")
