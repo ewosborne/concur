@@ -19,12 +19,18 @@ runs five digs in parallel and spits out some JSON about the results.  Try it!  
 # BIG IMPORTANT NOTE
 This is a work in progress written by a guy who doesn't write code for a living. I believe this is pretty solid at its core and does what it says on the tin but it might have weird corner cases.  It is by no means idiomatic go, although I tried. PRs and comments welcome. It doesn't have many tests and could use a restructure. Maybe someday.
 
-# building
+# installing
+nix support coming soon, and eventually I'd like to add other package managers. Work in progress.
+
+## Pre-built binary
+You can grab a pre-built binary from the [latest release](https://github.com/ewosborne/concur/releases/tag/v0.4.1).
+
+
+## building
 You may want to build from scratch. I use [just](https://just.systems/) to manage building and testing so everything is in a `justfile` and done with `goreleaser` so it gets a little complicated. [Check it out](justfile).
 
 You can do that too, or you can just run`go build`.
 
-If you prefer, you can grab a pre-built binary from the [latest release](https://github.com/ewosborne/concur/releases/tag/v0.4.1).
 
 # usage
 
