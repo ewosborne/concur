@@ -366,14 +366,17 @@ func GetStdin() ([]string, bool) {
 	fi, _ := os.Stdin.Stat()
 
 	if (fi.Mode() & os.ModeCharDevice) == 0 {
-		fmt.Println("reading from stdin")
+		//fmt.Println("reading from stdin")
 
 		bytes, _ := io.ReadAll(os.Stdin)
 		str := string(bytes)
-		fmt.Println(str)
+		//fmt.Println(str, len(str))
+
+		// TODO: think about this.  would I ever want
+		//  a multi-word arg?
 		return strings.Fields(str), true
 	} else {
-		fmt.Println("reading from terminal")
+		//fmt.Println("reading from terminal")
 	}
 	return nil, false
 }
