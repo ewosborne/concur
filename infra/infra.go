@@ -56,7 +56,6 @@ func (j JobStatus) String() string {
 type Command struct {
 	ID          JobID     `json:"id"`
 	Status      JobStatus `json:"jobstatus"`
-	Original    string    `json:"original"`
 	Substituted string    `json:"substituted"`
 	Arg         string    `json:"arg"`
 	Stdout      []string  `json:"stdout"`
@@ -136,6 +135,7 @@ func Do(command string, substituteArgs []string, flags Flags) Results {
 	res.Commands = completedCommands
 	res.Info.InternalSystemRunTime = systemRunTime
 	res.Info.CoroutineLimit = flags.GoroutineLimit
+	res.Info.OriginalCommand = command
 
 	return res
 }
@@ -148,9 +148,10 @@ type Results struct {
 }
 
 type ResultsInfo struct {
-	CoroutineLimit        int
+	CoroutineLimit        int           `json:"coroutineLimit"`
 	InternalSystemRunTime time.Duration `json:"-"`
-	SystemRuntime         string
+	SystemRuntime         string        `json:"systemRuntime"`
+	OriginalCommand       string        `json:"originalCommand"`
 }
 
 func GetJSONReport(res Results) (string, error) {
@@ -340,7 +341,6 @@ func buildListOfCommands(command string, hosts []string, token string) (CommandL
 	var ret CommandList
 	for _, host := range hosts {
 		x := Command{}
-		x.Original = command
 		x.Arg = host
 		x.Substituted = strings.ReplaceAll(command, token, host)
 		x.Status = TBD
