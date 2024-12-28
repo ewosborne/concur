@@ -1,22 +1,4 @@
 
-progress bar
-
-flags
- output type, default json
- timeout
- num procs, 0 for infinite. default 128.  some flag to also say "num-cpus" somehow, or "num-cores".
-  runtime.NumCPU()
-
-* can I just add flags and args to a context?  is that what they're for?
-
-
-next:
-  focus on output formatting and cleanup
-  reorg infra.go to smaller functions?
-  and how the hell do I test this?
-
-
-
 how to test
 
 a lot of it revolves around
@@ -94,3 +76,5 @@ progress bar which tracks --timeout?  --pbar {jobs|time} maybe?
 
 
 doc cleanup
+
+read list of arg hosts from stdin (pipe)?
