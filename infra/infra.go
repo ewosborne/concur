@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ewosborne/concur/loginfra"
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 )
@@ -103,6 +104,9 @@ func Do(template string, targets []string, flags Flags) Results {
 	var cancelCtx context.CancelFunc
 	var res = Results{}
 
+	logger := loginfra.NewLogger(os.Stdout, "APP", loginfra.WARNING)
+	logger.Warning("this is a warning")
+
 	flagErrors = flags.FlagErrors
 	systemStartTime := time.Now()
 
@@ -115,6 +119,7 @@ func Do(template string, targets []string, flags Flags) Results {
 		ctx, cancelCtx = context.WithTimeout(context.Background(), flags.Timeout)
 	}
 
+	ctx = loginfra.WithLogger(ctx, logger)
 	defer cancelCtx()
 
 	// build a list of commandsToRun
