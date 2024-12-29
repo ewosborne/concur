@@ -12,6 +12,8 @@ TEST.
 
 
 ok, multicontext design.
+think it's ok but needs testing
 
-  things are ok but dealing with 0 as a default is a pain in the ass.
-  durations are 64bit ints so just set them to max of that as deafult?
+also, pass logger in via context?  i don't understand logging.
+
+also I want --first and --any to kill and return all other jobs

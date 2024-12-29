@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"math"
 	"math/rand"
 	"os"
@@ -167,7 +166,7 @@ func GetJSONReport(res Results) (string, error) {
 	res.Info.SystemRuntimeString = res.Info.InternalSystemRunTime.Truncate(time.Millisecond).String()
 	jsonResults, err := json.MarshalIndent(res, "", " ")
 	if err != nil {
-		slog.Error("error marshaling results")
+		// TODO  slog.Error("error marshaling results")
 		return "", err
 	}
 
@@ -301,7 +300,7 @@ Outer:
 			doneList = append(doneList, c)
 			pbar.Add(1)
 			if flags.FirstZero || (flags.Any && c.ReturnCode == 0) {
-				slog.Debug(fmt.Sprintf("returning %s", c.Arg))
+				// slog.Debug(fmt.Sprintf("returning %s", c.Arg))
 				// this only returns the single command we're interested in regardless of what other commands have done.
 				//  TODO is this what I want?  or do I want to return all commands but the other ones as NotStarted / whatever?
 				// TODO: do I need to cancel all child contexts?  cancel the parent?  probably parent.
@@ -325,6 +324,67 @@ Outer:
 	time.Sleep(pbarFinish) // to let the pbar finish displaying.
 
 	return doneList, pbarFinish
+}
+
+func setTimeouts(cmd *cobra.Command) (time.Duration, time.Duration, error) {
+	var globalDuration, jobDuration time.Duration
+	var err error
+
+	globalTimeoutString, _ := cmd.Flags().GetString("timeout")
+	jobTimeoutString, _ := cmd.Flags().GetString("job-timeout")
+
+	globalDuration, err = time.ParseDuration(globalTimeoutString)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "invalid global timeout %v %v", jobTimeoutString, err)
+		os.Exit(1)
+	}
+
+	jobDuration, err = time.ParseDuration(jobTimeoutString)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "invalid job timeout %v %v", jobTimeoutString, err)
+		os.Exit(1)
+	}
+
+	// now the logic starts
+
+	// if job is set and global is not
+	//   then set global to infinite
+	if jobDuration > 0 && globalDuration == 0 {
+		globalDuration = math.MaxInt64
+		return globalDuration, jobDuration, nil
+	}
+
+	// if global is set and job is not
+	//  then set job to global
+	if globalDuration > 0 && jobDuration == 0 {
+		jobDuration = globalDuration
+		return globalDuration, jobDuration, nil
+
+	}
+
+	// if they're both zero
+	if globalDuration == 0 && jobDuration == 0 {
+		globalDuration = math.MaxInt64
+		jobDuration = math.MaxInt64
+		return globalDuration, jobDuration, nil
+	}
+
+	// if they're both set
+	// 		jobDuration must be <= globalDuration
+	if jobDuration > 0 && globalDuration > 0 {
+		if !(jobDuration <= globalDuration) {
+			fmt.Fprintf(os.Stderr, "job timeout must be less than global timeout, %v %v", jobDuration, globalDuration)
+			os.Exit(1)
+		}
+		return globalDuration, jobDuration, nil
+	}
+
+	// is that it?
+
+	//fmt.Println("DEBUG: jd", jobDuration, "gd", globalDuration)
+
+	return globalDuration, jobDuration, nil
+
 }
 
 func PopulateFlags(cmd *cobra.Command) Flags {
@@ -355,71 +415,9 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 		flags.GoroutineLimit = x
 	}
 
-	// global timeout TODO break all of this into a separate function
-	globalTimeoutString, _ := cmd.Flags().GetString("timeout")
-	globalTimeoutDuration, err := time.ParseDuration(globalTimeoutString)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "invalid global timeout %v", globalTimeoutString)
-		os.Exit(1)
-	}
-
-	jobTimeoutString, _ := cmd.Flags().GetString("job-timeout")
-	jobTimeoutDuration, err := time.ParseDuration(jobTimeoutString)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "invalid job timeout %v", jobTimeoutString)
-		os.Exit(1)
-	}
-
-	/// max is ~290 years.
-	if globalTimeoutDuration == 0 {
-		globalTimeoutDuration = math.MaxInt64
-	}
-
-	if jobTimeoutDuration == 0 {
-		jobTimeoutDuration = math.MaxInt64
-	}
-
-	fmt.Println("DEBUG", globalTimeoutDuration, globalTimeoutString, jobTimeoutDuration, jobTimeoutString)
-
-	// this whole section is rickety and needs to be reworked and broken out seperately
-
-	/*
-		the rules are
-		if both jt and gt are set then jt needs to be less than gt
-		if neither are set then both are infinite
-		if jt is set and gt is not then gt is infinite
-		if jt is not set and gt is set then jt is infinite
-	*/
-	// if jobTimeoutDuration > 0 && globalTimeoutDuration == 0 { // special case where job timeout is set but global is not
-	// 	//fmt.Println("SPECIAL CASE")
-	// 	flags.Timeout = flags.JobTimeout + 42
-	// } else if jobTimeoutDuration >= globalTimeoutDuration {
-	// 	fmt.Fprintf(os.Stderr, "job timeout must be less than global timeout\n")
-	// 	os.Exit(1)
-	// } else if jobTimeoutDuration == 0 { // special case, jobTimeout is not set
-	// 	fmt.Println("JZT!")
-	// 	flags.JobTimeout = flags.Timeout + 42
-	// } else {
-	// }
-
-	if jobTimeoutDuration > 0 && globalTimeoutDuration > 0 {
-		if jobTimeoutDuration >= globalTimeoutDuration {
-			fmt.Fprintf(os.Stderr, "job timeout must be less than global timeout\n")
-			os.Exit(1)
-		}
-	} else if jobTimeoutDuration == 0 && globalTimeoutDuration == 0 {
-		// timeouts are infinite.  how do I handle this?  just leave at zero? or set to maxint?
-	} else if jobTimeoutDuration > 0 && globalTimeoutDuration == 0 {
-		// keep jtd and set gtd to infinite
-	} else if jobTimeoutDuration == 0 && globalTimeoutDuration > 0 {
-		// this is the legacy case.
-	}
-
-	// jobTimeout and globalTimeout are time.Duration, carry those into flags.
-	flags.JobTimeout = jobTimeoutDuration
-	flags.Timeout = globalTimeoutDuration
-
-	// per-job timeout
+	flags.Timeout, flags.JobTimeout, _ = setTimeouts(cmd)
+	//log.Println("GT", flags.Timeout, "JT", flags.JobTimeout)
+	// TODO do I want to do anything with error here?
 
 	return flags
 }
