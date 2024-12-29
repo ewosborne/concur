@@ -4,17 +4,12 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
-	"io"
-	"log/slog"
 	"os"
 
 	"github.com/ewosborne/concur/infra"
 
 	"github.com/spf13/cobra"
 )
-
-var logLevelFlag string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -44,6 +39,8 @@ func ConcurCmdE(cmd *cobra.Command, args []string) error {
 	}
 
 	flags := infra.PopulateFlags(cmd)
+	infra.Logger = infra.GetLoggerFromArgs(cmd)
+	infra.Logger.Debug("sample debug message, please ignore")
 
 	res := infra.Do(template, targets, flags)
 	infra.ReportDone(res, flags)
@@ -63,9 +60,6 @@ func init() {
 	// NOTE: infra.PopulateFlags() and infra.Flag also need to be updated when flags are tweaked.
 	//  I don't like that approach and should clean it up.
 
-	var logLevel slog.Level
-	var outStream io.Writer = os.Stderr
-
 	rootCmd.Flags().Bool("any", false, "Return any (the first) job with exit code of zero")
 	rootCmd.Flags().Bool("first", false, "First commanjobd regardless of exit code")
 
@@ -76,37 +70,7 @@ func init() {
 	rootCmd.Flags().BoolP("flag-errors", "", false, "Print a message to stderr for all completed jobs with an exit code other than zero")
 	rootCmd.Flags().BoolP("pbar", "p", false, "Display a progress bar which ticks up once per completed job")
 	rootCmd.Flags().StringP("job-timeout", "j", "0", "Per-job timeout in time.Duration format (0 default, must be <= global timeout)")
-
-	rootCmd.PersistentFlags().StringVarP(&logLevelFlag, "log level", "l", "", "Enable debug mode (one of d, i, w, e)")
-
-	// is there a better way to do this?  TODO
-	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
-
-		// TODO maybe make this a fixed set of options somehow?
-		switch logLevelFlag {
-		case "w":
-			logLevel = slog.LevelWarn
-		case "e":
-			logLevel = slog.LevelError
-		case "i":
-			logLevel = slog.LevelInfo
-		case "d":
-			logLevel = slog.LevelDebug
-		case "":
-			outStream = io.Discard
-		default:
-			// can't log this because it's about setting logs..
-			fmt.Fprintf(os.Stderr, "Invalid debug level: %s\n", logLevelFlag)
-			os.Exit(1)
-		}
-
-		logger := slog.New(slog.NewTextHandler(outStream, &slog.HandlerOptions{
-			AddSource: true,
-			Level:     logLevel,
-		}))
-		slog.SetDefault(logger)
-	}
-
+	rootCmd.Flags().StringP("log", "l", "", "Enable debug mode (one of d, i, w, e)")
 }
 
 func SetVersionInfo(version string) {

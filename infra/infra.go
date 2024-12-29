@@ -24,6 +24,7 @@ type JobStatus int
 type JobID int
 
 var id JobID
+var Logger *loginfra.Logger
 
 const (
 	TBD JobStatus = iota
@@ -83,6 +84,7 @@ type Flags struct {
 	FirstZero          bool
 	Pbar               bool
 	JobTimeout         time.Duration
+	DebugLevel         string
 }
 
 type CommandList []*Command
@@ -104,13 +106,12 @@ func Do(template string, targets []string, flags Flags) Results {
 	var cancelCtx context.CancelFunc
 	var res = Results{}
 
-	logger := loginfra.NewLogger(os.Stdout, "APP", loginfra.WARNING)
-	logger.Warning("this is a warning")
+	// loginfra.NewLogger(os.Stdout, "APP", loginfra.WARNING)
+	//logger.Warning("this is a warning")
 
 	flagErrors = flags.FlagErrors
 	systemStartTime := time.Now()
 
-	//fmt.Println("switching on timeout", flags.Timeout)
 	switch flags.Timeout {
 	case 0:
 		ctx, cancelCtx = context.WithCancel(context.Background())
@@ -119,7 +120,7 @@ func Do(template string, targets []string, flags Flags) Results {
 		ctx, cancelCtx = context.WithTimeout(context.Background(), flags.Timeout)
 	}
 
-	ctx = loginfra.WithLogger(ctx, logger)
+	ctx = loginfra.WithLogger(ctx, Logger)
 	defer cancelCtx()
 
 	// build a list of commandsToRun
@@ -153,7 +154,6 @@ func Do(template string, targets []string, flags Flags) Results {
 }
 
 type Results struct {
-	//Commands CommandMap  `json:"commands"`
 	Commands CommandList `json:"command"`
 
 	Info ResultsInfo `json:"info"`
@@ -389,13 +389,14 @@ func setTimeouts(cmd *cobra.Command) (time.Duration, time.Duration, error) {
 
 	// is that it?
 
-	//fmt.Println("DEBUG: jd", jobDuration, "gd", globalDuration)
+	Logger.Debug(fmt.Sprintf("Job duration %v, global duration %v", jobDuration, globalDuration))
 
 	return globalDuration, jobDuration, nil
 
 }
 
 func PopulateFlags(cmd *cobra.Command) Flags {
+
 	flags := Flags{}
 	// I sure wish there was a cleaner way to do this
 
@@ -424,10 +425,34 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 	}
 
 	flags.Timeout, flags.JobTimeout, _ = setTimeouts(cmd)
-	//log.Println("GT", flags.Timeout, "JT", flags.JobTimeout)
-	// TODO do I want to do anything with error here?
 
 	return flags
+}
+
+func GetLoggerFromArgs(cmd *cobra.Command) *loginfra.Logger {
+	var ret *loginfra.Logger
+	tmp, _ := cmd.Flags().GetString("log")
+	switch tmp {
+	case "":
+		ret = loginfra.NewLogger(io.Discard, "APP", loginfra.DEBUG)
+		// null logger somehow?
+	case "d":
+		ret = loginfra.NewLogger(os.Stderr, "APP", loginfra.DEBUG)
+
+	case "i":
+		ret = loginfra.NewLogger(os.Stderr, "APP", loginfra.INFO)
+
+	case "w":
+		ret = loginfra.NewLogger(os.Stderr, "APP", loginfra.WARNING)
+
+	case "e":
+		ret = loginfra.NewLogger(os.Stderr, "APP", loginfra.ERROR)
+
+	default:
+		fmt.Fprintf(os.Stderr, "Invalid log level level: %s\n", tmp)
+		os.Exit(1)
+	}
+	return ret
 }
 
 func buildListOfCommands(command string, targets []string, token string) (CommandList, error) {
