@@ -30,6 +30,7 @@ const (
 	Running
 	Finished
 	Errored
+	TimedOut
 )
 
 func (j JobStatus) MarshalJSON() ([]byte, error) {
@@ -48,6 +49,8 @@ func (j JobStatus) String() string {
 		return "Finished"
 	case Errored:
 		return "Errored"
+	case TimedOut:
+		return "TimedOut"
 	default:
 		return "Unknown"
 	}
@@ -66,6 +69,7 @@ type Command struct {
 	RunTimePrintable string        `json:"runtime"`
 	RunTime          time.Duration `json:"-"` // msec runtime for sorting
 	ReturnCode       int           `json:"returncode"`
+	JobTimeout       time.Duration `json:"jobtimeout"` // TODO these print as ints, would be nice to print as string.
 }
 
 type Flags struct {
@@ -77,6 +81,7 @@ type Flags struct {
 	FlagErrors         bool
 	FirstZero          bool
 	Pbar               bool
+	JobTimeout         time.Duration
 }
 
 type CommandList []*Command
@@ -125,7 +130,7 @@ func Do(template string, targets []string, flags Flags) Results {
 		flags.GoroutineLimit = len(commandsToRun)
 	}
 	// go run the things
-	completedCommands, pbarOffset := command_loop(ctx, commandsToRun, flags)
+	completedCommands, pbarOffset := commandLoop(ctx, cancelCtx, commandsToRun, flags)
 
 	// finalizing
 	systemEndTime := time.Now()
@@ -154,7 +159,7 @@ type ResultsInfo struct {
 	InternalSystemRunTime time.Duration `json:"-"`
 	SystemRuntimeString   string        `json:"systemRuntime"`
 	OriginalCommand       string        `json:"originalCommand"`
-	Timeout               time.Duration `json:"timeout"`
+	Timeout               time.Duration `json:"timeout"` // rename this?
 }
 
 func GetJSONReport(res Results) (string, error) {
@@ -187,15 +192,17 @@ func ReportDone(res Results, flags Flags) {
 
 }
 
-func executeSingleCommand(ctx context.Context, c *Command) {
+func executeSingleCommand(jobCtx context.Context, jobCancel context.CancelFunc, c *Command) {
 
 	var outb, errb strings.Builder
+
+	defer jobCancel() // I assume I need this - ??
 
 	// name is command name, args is slice of arguments to that command
 	f := strings.Fields(c.Substituted)
 	name, args := f[0], f[1:]
 
-	cmd := exec.CommandContext(ctx, name, args...)
+	cmd := exec.CommandContext(jobCtx, name, args...)
 
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
@@ -205,6 +212,12 @@ func executeSingleCommand(ctx context.Context, c *Command) {
 
 	if err != nil {
 		c.Status = Errored
+		if jobCtx.Err() == context.DeadlineExceeded {
+			// TODO clean this up
+			// return fmt.Errorf("command timed out: %w", err)
+			c.Status = TimedOut
+			fmt.Fprintf(os.Stderr, "command timed out: %v\n", err)
+		}
 		if exitError, ok := err.(*exec.ExitError); ok {
 			c.ReturnCode = exitError.ExitCode()
 		}
@@ -218,7 +231,7 @@ func executeSingleCommand(ctx context.Context, c *Command) {
 
 }
 
-func get_pbar(cmdList CommandList, flags Flags) *progressbar.ProgressBar {
+func getPBar(cmdList CommandList, flags Flags) *progressbar.ProgressBar {
 	pbar := progressbar.NewOptions(len(cmdList),
 		progressbar.OptionSetVisibility(flags.Pbar),
 		progressbar.OptionSetItsString("jobs"), // doesn't do anything, don't know why
@@ -232,7 +245,7 @@ func get_pbar(cmdList CommandList, flags Flags) *progressbar.ProgressBar {
 
 }
 
-func command_loop(ctx context.Context, commandsToRun CommandList, flags Flags) (CommandList, time.Duration) {
+func commandLoop(loopCtx context.Context, loopCancel context.CancelFunc, commandsToRun CommandList, flags Flags) (CommandList, time.Duration) {
 
 	var tokens = make(chan struct{}, flags.GoroutineLimit) // permission to run
 	var done = make(chan *Command)                         // where a command goes when it's done
@@ -246,7 +259,7 @@ func command_loop(ctx context.Context, commandsToRun CommandList, flags Flags) (
 	}
 
 	// a jobcount pbar, doesn't print anything unless flags.Pbar is set
-	pbar := get_pbar(commandsToRun, flags)
+	pbar := getPBar(commandsToRun, flags)
 
 	// launch all goroutines
 
@@ -256,7 +269,13 @@ func command_loop(ctx context.Context, commandsToRun CommandList, flags Flags) (
 			tokens <- struct{}{} // get permission to start
 			c.StartTime = time.Now()
 
-			executeSingleCommand(ctx, c)
+			// create jobCtx and pass it in
+			// workerCtx, workerCancel := context.WithTimeout(mainCtx, 5*time.Second)
+
+			jobCtx, jobCancel := context.WithTimeout(loopCtx, flags.JobTimeout)
+			c.JobTimeout = flags.JobTimeout
+
+			executeSingleCommand(jobCtx, jobCancel, c)
 			c.EndTime = time.Now()
 			c.RunTime = c.EndTime.Sub(c.StartTime)
 			c.RunTimePrintable = c.RunTime.String()
@@ -282,15 +301,17 @@ Outer:
 				slog.Debug(fmt.Sprintf("returning %s", c.Arg))
 				// this only returns the single command we're interested in regardless of what other commands have done.
 				//  TODO is this what I want?  or do I want to return all commands but the other ones as NotStarted / whatever?
+				// TODO: do I need to cancel all child contexts?  cancel the parent?  probably parent.
 				break Outer
 			}
 
-		case <-ctx.Done():
-			fmt.Fprintf(os.Stderr, "context popped, %v jobs done", len(completedCommands))
+		case <-loopCtx.Done():
+			fmt.Fprintf(os.Stderr, "global timeout popped, %v jobs done", len(completedCommands))
 			break Outer
 		}
 	}
 	// Outer: breaks here
+	loopCancel() // is this it?
 
 	// sort doneList by completion time so .commands[0] is the fastest.
 	sort.Slice(doneList, func(i int, j int) bool {
@@ -323,14 +344,40 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 		flags.GoroutineLimit = x
 	}
 
-	tmp, _ := cmd.Flags().GetString("timeout")
-
-	ft, err := time.ParseDuration(tmp)
-	flags.Timeout = ft
+	// global timeout
+	globalTmp, _ := cmd.Flags().GetString("timeout")
+	globalTimeout, err := time.ParseDuration(globalTmp)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "invalid timeout %v", tmp)
+		fmt.Fprintf(os.Stderr, "invalid global timeout %v", globalTmp)
 		os.Exit(1)
 	}
+
+	jobTmp, _ := cmd.Flags().GetString("job-timeout")
+	jobTimeout, err := time.ParseDuration(jobTmp)
+
+	//fmt.Println("DEBUG", globalTimeout, jobTimeout, globalTimeout > jobTimeout, jobTimeout > 0, globalTimeout == 0)
+
+	// if global is not set and job is then set it to job+epsilon
+	// if global is set and it's not <= job then error out
+
+	if jobTimeout > 0 && globalTimeout == 0 { // special case where job timeout is set but global is not
+		//fmt.Println("SPECIAL CASE")
+		flags.Timeout = flags.JobTimeout + 42
+	} else if jobTimeout >= globalTimeout {
+		fmt.Fprintf(os.Stderr, "job timeout must be less than global timeout\n")
+		os.Exit(1)
+	}
+
+	flags.JobTimeout = jobTimeout
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "invalid job timeout %v", jobTmp)
+		os.Exit(1)
+	}
+
+	flags.Timeout = globalTimeout
+
+	// per-job timeout
+
 	flags.Token, _ = cmd.Flags().GetString("token")
 	flags.FlagErrors, _ = cmd.Flags().GetBool("flag-errors")
 	flags.FirstZero, _ = cmd.Flags().GetBool("first")

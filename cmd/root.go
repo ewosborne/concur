@@ -60,6 +60,9 @@ func Execute() {
 
 func init() {
 
+	// NOTE: infra.PopulateFlags() and infra.Flag also need to be updated when flags are tweaked.
+	//  I don't like that approach and should clean it up.
+
 	var logLevel slog.Level
 	var outStream io.Writer = os.Stderr
 
@@ -68,10 +71,11 @@ func init() {
 
 	rootCmd.Flags().StringP("concurrent", "c", "128",
 		"Number of concurrent jobs (0 = no limit), 'cpu' or '1x' = one job per cpu core, '2x' = two jobs per cpu core")
-	rootCmd.Flags().StringP("timeout", "t", "0", "Timeout in time.Duration format (0 default for no timeout)")
+	rootCmd.Flags().StringP("timeout", "t", "0", "Global timeout in time.Duration format (0 default for no timeout)")
 	rootCmd.Flags().StringP("token", "", "{{1}}", "Token to match for replacement")
 	rootCmd.Flags().BoolP("flag-errors", "", false, "Print a message to stderr for all completed jobs with an exit code other than zero")
 	rootCmd.Flags().BoolP("pbar", "p", false, "Display a progress bar which ticks up once per completed job")
+	rootCmd.Flags().StringP("job-timeout", "", "0", "Per-job timeout in time.Duration format (0 default, must be <= global timeout)")
 
 	rootCmd.PersistentFlags().StringVarP(&logLevelFlag, "log level", "l", "", "Enable debug mode (one of d, i, w, e)")
 
