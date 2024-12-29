@@ -201,6 +201,9 @@ func executeSingleCommand(jobCtx context.Context, jobCancel context.CancelFunc, 
 
 	var outb, errb strings.Builder
 
+	//l := loginfra.GetLogger(jobCtx)
+	//l.Warning("esc warn")
+
 	defer jobCancel() // I assume I need this - ??
 
 	// name is command name, args is slice of arguments to that command
