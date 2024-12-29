@@ -50,4 +50,4 @@ release arg1: require-env testv
     rm -rf dist/
     git tag {{ arg1 }}
     git push origin {{ arg1 }}
-    goreleaser release
+    goreleaser release --release-notes RELEASENOTES.md 
