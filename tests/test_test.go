@@ -33,6 +33,7 @@ var sleepFlags = infra.Flags{
 	ConcurrentJobLimit: "128",
 	GoroutineLimit:     128,
 	Timeout:            time.Duration(90 * time.Second),
+	JobTimeout:         time.Duration(10 * time.Second),
 	Token:              "{{1}}",
 }
 
