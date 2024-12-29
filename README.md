@@ -279,6 +279,8 @@ command ping -c 1 www.slashdot.ogr exited with error code 68
 ```
 68 is apparently what `ping` uses to mean `cannot resolve host`.  
 
+'  -j, --job-timeout' takes a string in time.Duration format. It sets a per-job timeout; see the Handling Timeouts section for details.
+
 `-l, --log level` takes a single letter parameter, one of `[dwie]` - Debug, Warn, Infom, Error - and emits logs of that level or higher to stderr. It's very much a work in progress but right now looks like this:
 
 ```
@@ -300,42 +302,35 @@ concur "scp -O rudder.zip {{1}}:" nas wamp-rat cloud --pbar
 There's a fixed 250ms delay after the last job runs so that you can see that the progress bar finishes.  It is not counted in the system runtime. Try `concur "sleep {{1}}" 2 3 4 --pbar` and you'll see what I mean.
 
 
-`-t, --timeout` sets a timeout, after which it kills all jobs and moves on with its life. The default is no timeout at all, so if you have a process which hangs, it'll just sit there indefinitely. The error message isn't elegant but it tries to give you as much data as it can get:
-
-```
-concur "sleep {{1}}" 1 2 3 4 5 -t 2
-context popped, 0 jobs done{
- "command": [
-  {
-   "id": 0,
-   "jobstatus": "Finished",
-   "original": "sleep {{1}}",
-   "substituted": "sleep 1",
-   "arg": "1",
-   "stdout": [
-    ""
-   ],
-   "stderr": [
-    ""
-   ],
-   "starttime": "2024-12-27T16:58:03.513929-05:00",
-   "endtime": "2024-12-27T16:58:04.523784-05:00",
-   "runtime": "1.009861334s",
-   "returncode": 0
-  }
- ],
- "info": {
-  "CoroutineLimit": 128,
-  "SystemRuntime": "2.001s"
- }
-}
-```
-
-The `context popped` error comes out on stderr, so you can still pipe `concur` to `jq`.
-Note that timeouts aren't perfect, they'll always be at least the value you specify plus a few milliseconds for `go` to catch up with paperwork and stuff. This means that sometimes a `sleep 2` with timeout of 2 will succeed and sometimes it'll fail.
+`-t, --timeout` sets a timeout, after which it kills all jobs and moves on with its life.  See the Handling Timeouts section for details.
 
 `--token` is the token I look for in the command string to tell me where to sub in a command paremeter. The default is the literal string `{{1}}`. This just a simple string substitution under the hood, not some fancy template engine.  You can change it to any pattern you like, e.g. `./concur "ping -c 1 @@@" www.mit.edu www.ucla.edu www.slashdot.org --token @@@`.  You can probably do Little Bobby Tables stuff with this if you try, but why would you do that to yourself?
 
+
+## handling timeouts
+There are two timeout flags, `-t, --timeout` and `-j, --job-timeout`.  Both default to 0, which means both are infinite. They both take arguments in time.Duration format, e.g. '15s' for 15 seconds.
+
+`-t` is a global timeout - if any jobs exceed this timeout then all jobs are killed and I try to return whatever I can about what's already been completed.
+
+`-j` is a per-job timeout.  It is _the same for each job_.  If any job exceeds this timeout it is killed but other jobs continue processing.
+
+If `-j` is set it must be less than the global timeout, but as a special case the global timeout can be 0 with a non-zero per-job timeout.
+
+What's the use case here?  Consider a batch of jobs which block on CPU, so you only have as many worker goroutines as CPU cores. << link to reddit comment >>.  In the example below there's a mythical CLI command `do-something-to-image`. You have 10,000 images to process and are running only as many worker goroutines as you have cores (say, 8 cores). If each image normally takes 4sec to process then you'd have 10,000/8 = 1,250 batches of 8 images at a time. 
+
+```
+concur "do-something-to-image {{1}}" <...10,0000 image names> -j 10s -c 1x
+```
+
+This says: start up one worker thread for every CPU and feed them ten thousand images. If any image takes longer than 10sec to process then give up on that particular image and move on to the next one, but run the entire batch of jobs until they're all done or have all timed out. 
+
+Contrast this with a global timeout for the same operation:
+
+```
+concur "do-something-to-image {{1}}" <...10,0000 image names> -t 2h -c 1x
+```
+
+This will run the job for up to two hours and then once runtime hits 2h it will kill all jobs and return what it can about what's been done.
 
 # terminology
 
