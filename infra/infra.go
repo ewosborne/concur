@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -329,7 +330,15 @@ Outer:
 func PopulateFlags(cmd *cobra.Command) Flags {
 	flags := Flags{}
 	// I sure wish there was a cleaner way to do this
+
+	flags.Token, _ = cmd.Flags().GetString("token")
+	flags.FlagErrors, _ = cmd.Flags().GetBool("flag-errors")
+	flags.FirstZero, _ = cmd.Flags().GetBool("first")
+	flags.Pbar, _ = cmd.Flags().GetBool("pbar")
+
 	flags.Any, _ = cmd.Flags().GetBool("any")
+
+	// TODO: break this into a separate function
 	flags.ConcurrentJobLimit, _ = cmd.Flags().GetString("concurrent")
 
 	switch flags.ConcurrentJobLimit {
@@ -346,7 +355,7 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 		flags.GoroutineLimit = x
 	}
 
-	// global timeout
+	// global timeout TODO break all of this into a separate function
 	globalTimeoutString, _ := cmd.Flags().GetString("timeout")
 	globalTimeoutDuration, err := time.ParseDuration(globalTimeoutString)
 	if err != nil {
@@ -361,9 +370,18 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 		os.Exit(1)
 	}
 
+	/// max is ~290 years.
+	if globalTimeoutDuration == 0 {
+		globalTimeoutDuration = math.MaxInt64
+	}
+
+	if jobTimeoutDuration == 0 {
+		jobTimeoutDuration = math.MaxInt64
+	}
+
 	fmt.Println("DEBUG", globalTimeoutDuration, globalTimeoutString, jobTimeoutDuration, jobTimeoutString)
 
-	// this whole section is rickety and needs to be reworked
+	// this whole section is rickety and needs to be reworked and broken out seperately
 
 	/*
 		the rules are
@@ -403,10 +421,6 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 
 	// per-job timeout
 
-	flags.Token, _ = cmd.Flags().GetString("token")
-	flags.FlagErrors, _ = cmd.Flags().GetBool("flag-errors")
-	flags.FirstZero, _ = cmd.Flags().GetBool("first")
-	flags.Pbar, _ = cmd.Flags().GetBool("pbar")
 	return flags
 }
 
