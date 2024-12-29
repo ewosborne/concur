@@ -4,11 +4,6 @@ progress bar which tracks --timeout?  --pbar {jobs|time} maybe?
 
 document new features since last release
 
-per-job vs overall timeout 
-  per-job: if a job takes too long, kill it but keep processing
-  overall: when we hit this absolute limit, kill everything
-  
-
 package things: nix, aqua, brew, mise.
 
 clean up code, make it testable
@@ -18,6 +13,5 @@ TEST.
 
 ok, multicontext design.
 
-it seems to work but I need to test it.
-  - does the return loop look OK with a global timeout?  do I get all the status I want?
-  - same with per job.  is it always returning everything it can?
+  things are ok but dealing with 0 as a default is a pain in the ass.
+  durations are 64bit ints so just set them to max of that as deafult?

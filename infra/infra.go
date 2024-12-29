@@ -272,6 +272,8 @@ func commandLoop(loopCtx context.Context, loopCancel context.CancelFunc, command
 			// create jobCtx and pass it in
 			// workerCtx, workerCancel := context.WithTimeout(mainCtx, 5*time.Second)
 
+			// TODO: what if flags.JobTimeout is zero?  need magic here?
+			//   duration is int64 so just set it to that? 290 years.
 			jobCtx, jobCancel := context.WithTimeout(loopCtx, flags.JobTimeout)
 			c.JobTimeout = flags.JobTimeout
 
@@ -345,36 +347,59 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 	}
 
 	// global timeout
-	globalTmp, _ := cmd.Flags().GetString("timeout")
-	globalTimeout, err := time.ParseDuration(globalTmp)
+	globalTimeoutString, _ := cmd.Flags().GetString("timeout")
+	globalTimeoutDuration, err := time.ParseDuration(globalTimeoutString)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "invalid global timeout %v", globalTmp)
+		fmt.Fprintf(os.Stderr, "invalid global timeout %v", globalTimeoutString)
 		os.Exit(1)
 	}
 
-	jobTmp, _ := cmd.Flags().GetString("job-timeout")
-	jobTimeout, err := time.ParseDuration(jobTmp)
-
-	//fmt.Println("DEBUG", globalTimeout, jobTimeout, globalTimeout > jobTimeout, jobTimeout > 0, globalTimeout == 0)
-
-	// if global is not set and job is then set it to job+epsilon
-	// if global is set and it's not <= job then error out
-
-	if jobTimeout > 0 && globalTimeout == 0 { // special case where job timeout is set but global is not
-		//fmt.Println("SPECIAL CASE")
-		flags.Timeout = flags.JobTimeout + 42
-	} else if jobTimeout >= globalTimeout {
-		fmt.Fprintf(os.Stderr, "job timeout must be less than global timeout\n")
-		os.Exit(1)
-	}
-
-	flags.JobTimeout = jobTimeout
+	jobTimeoutString, _ := cmd.Flags().GetString("job-timeout")
+	jobTimeoutDuration, err := time.ParseDuration(jobTimeoutString)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "invalid job timeout %v", jobTmp)
+		fmt.Fprintf(os.Stderr, "invalid job timeout %v", jobTimeoutString)
 		os.Exit(1)
 	}
 
-	flags.Timeout = globalTimeout
+	fmt.Println("DEBUG", globalTimeoutDuration, globalTimeoutString, jobTimeoutDuration, jobTimeoutString)
+
+	// this whole section is rickety and needs to be reworked
+
+	/*
+		the rules are
+		if both jt and gt are set then jt needs to be less than gt
+		if neither are set then both are infinite
+		if jt is set and gt is not then gt is infinite
+		if jt is not set and gt is set then jt is infinite
+	*/
+	// if jobTimeoutDuration > 0 && globalTimeoutDuration == 0 { // special case where job timeout is set but global is not
+	// 	//fmt.Println("SPECIAL CASE")
+	// 	flags.Timeout = flags.JobTimeout + 42
+	// } else if jobTimeoutDuration >= globalTimeoutDuration {
+	// 	fmt.Fprintf(os.Stderr, "job timeout must be less than global timeout\n")
+	// 	os.Exit(1)
+	// } else if jobTimeoutDuration == 0 { // special case, jobTimeout is not set
+	// 	fmt.Println("JZT!")
+	// 	flags.JobTimeout = flags.Timeout + 42
+	// } else {
+	// }
+
+	if jobTimeoutDuration > 0 && globalTimeoutDuration > 0 {
+		if jobTimeoutDuration >= globalTimeoutDuration {
+			fmt.Fprintf(os.Stderr, "job timeout must be less than global timeout\n")
+			os.Exit(1)
+		}
+	} else if jobTimeoutDuration == 0 && globalTimeoutDuration == 0 {
+		// timeouts are infinite.  how do I handle this?  just leave at zero? or set to maxint?
+	} else if jobTimeoutDuration > 0 && globalTimeoutDuration == 0 {
+		// keep jtd and set gtd to infinite
+	} else if jobTimeoutDuration == 0 && globalTimeoutDuration > 0 {
+		// this is the legacy case.
+	}
+
+	// jobTimeout and globalTimeout are time.Duration, carry those into flags.
+	flags.JobTimeout = jobTimeoutDuration
+	flags.Timeout = globalTimeoutDuration
 
 	// per-job timeout
 
