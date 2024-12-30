@@ -61,11 +61,9 @@ func ConcurCmdE(cmd *cobra.Command, args []string) error {
 		slog.SetLogLoggerLevel(slog.LevelWarn)
 	case "e": // default
 		slog.SetLogLoggerLevel(slog.LevelError)
-	case "q": // quiet
+	case "q": // quiet.  not sure I want this, what about errors which cause the program to exit?
 		slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard,
-			&slog.HandlerOptions{
-				Level: slog.LevelDebug, // Set the logging level
-			})))
+			&slog.HandlerOptions{})))
 	default:
 		fmt.Fprintf(os.Stderr, "Invalid log level: %s\n", flags.LogLevel)
 		os.Exit(1)
