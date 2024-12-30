@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	_ "log" // magic to make slog look like log
+	"log/slog"
 	"math"
 	"math/rand"
 	"os"
@@ -104,6 +105,8 @@ func Do(template string, targets []string, flags Flags) Results {
 	var ctx context.Context
 	var cancelCtx context.CancelFunc
 	var res = Results{}
+
+	slog.Debug(fmt.Sprintf("calling Do with %v %v %v", template, targets, flags))
 
 	flagErrors = flags.FlagErrors
 	systemStartTime := time.Now()

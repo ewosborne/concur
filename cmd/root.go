@@ -4,6 +4,7 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -66,7 +67,8 @@ func ConcurCmdE(cmd *cobra.Command, args []string) error {
 				Level: slog.LevelDebug, // Set the logging level
 			})))
 	default:
-		panic("TODO fixme - invalid log level")
+		fmt.Fprintf(os.Stderr, "Invalid log level: %s\n", flags.LogLevel)
+		os.Exit(1)
 	}
 
 	res := infra.Do(template, targets, flags)
