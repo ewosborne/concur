@@ -4,6 +4,8 @@ Copyright © 2024 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"io"
+	"log/slog"
 	"os"
 
 	"github.com/ewosborne/concur/infra"
@@ -39,12 +41,36 @@ func ConcurCmdE(cmd *cobra.Command, args []string) error {
 	}
 
 	flags := infra.PopulateFlags(cmd)
-	infra.Logger = infra.GetLoggerFromArgs(cmd)
-	infra.Logger.Debug("sample debug message, please ignore")
+
+	/* logs are called like
+
+	slog.Info("hello slog info")
+	slog.Debug("hello slog debug")
+	slog.Error("hello slog error")
+
+	*/
+
+	// magic to set log level, this is about as clean as I can get it
+	switch flags.LogLevel {
+	case "d":
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	case "i":
+		slog.SetLogLoggerLevel(slog.LevelInfo)
+	case "w":
+		slog.SetLogLoggerLevel(slog.LevelWarn)
+	case "e": // default
+		slog.SetLogLoggerLevel(slog.LevelError)
+	case "q": // quiet
+		slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard,
+			&slog.HandlerOptions{
+				Level: slog.LevelDebug, // Set the logging level
+			})))
+	default:
+		panic("TODO fixme - invalid log level")
+	}
 
 	res := infra.Do(template, targets, flags)
 	infra.ReportDone(res, flags)
-
 	return nil
 }
 
@@ -70,7 +96,8 @@ func init() {
 	rootCmd.Flags().BoolP("flag-errors", "", false, "Print a message to stderr for all completed jobs with an exit code other than zero")
 	rootCmd.Flags().BoolP("pbar", "p", false, "Display a progress bar which ticks up once per completed job")
 	rootCmd.Flags().StringP("job-timeout", "j", "0", "Per-job timeout in time.Duration format (0 default, must be <= global timeout)")
-	rootCmd.Flags().StringP("log", "l", "", "Enable debug mode (one of d, i, w, e)")
+	rootCmd.Flags().StringP("log", "l", "e", "Enable debug mode (one of d, i, w, e, or q for quiet.  'e' is default.)")
+
 }
 
 func SetVersionInfo(version string) {
