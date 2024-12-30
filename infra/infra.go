@@ -125,7 +125,8 @@ func Do(template string, targets []string, flags Flags) Results {
 	// build a list of commandsToRun
 	commandsToRun, err := buildListOfCommands(template, targets, flags.Token)
 	if err != nil {
-		fmt.Fprint(os.Stderr, err)
+		//fmt.Fprint(os.Stderr, err)
+		slog.Error(fmt.Sprintf("error building list of commands: %v", err))
 	}
 
 	// flag fixup.
@@ -181,7 +182,8 @@ func ReportDone(res Results, flags Flags) {
 
 	jsonResults, err := GetJSONReport(res)
 	if err != nil {
-		fmt.Fprint(os.Stderr, err)
+		//fmt.Fprint(os.Stderr, err)
+		slog.Error(fmt.Sprintf("error getting json report: %v", err))
 	}
 	fmt.Println(jsonResults)
 
@@ -189,7 +191,8 @@ func ReportDone(res Results, flags Flags) {
 		for _, c := range res.Commands {
 			if c.ReturnCode != 0 {
 				// TODO better format?
-				fmt.Fprintf(os.Stderr, "command %v exited with error code %v\n", c.Substituted, c.ReturnCode)
+				//fmt.Fprintf(os.Stderr, "command %v exited with error code %v\n", c.Substituted, c.ReturnCode)
+				slog.Error(fmt.Sprintf("command %v exited with error code %v\n", c.Substituted, c.ReturnCode))
 			}
 		}
 	}
@@ -223,7 +226,8 @@ func executeSingleCommand(jobCtx context.Context, jobCancel context.CancelFunc, 
 			// TODO clean this up
 			// return fmt.Errorf("command timed out: %w", err)
 			c.Status = TimedOut
-			fmt.Fprintf(os.Stderr, "command timed out: %v\n", err)
+			//fmt.Fprintf(os.Stderr, "command timed out: %v\n", err)
+			slog.Info(fmt.Sprintf("command timed out: %v\n", err))
 		}
 		if exitError, ok := err.(*exec.ExitError); ok {
 			c.ReturnCode = exitError.ExitCode()
@@ -315,7 +319,8 @@ Outer:
 			}
 
 		case <-loopCtx.Done():
-			fmt.Fprintf(os.Stderr, "global timeout popped, %v jobs done", len(completedCommands))
+			//fmt.Fprintf(os.Stderr, "global timeout popped, %v jobs done", len(completedCommands))
+			slog.Info(fmt.Sprintf("global timeout popped, %v jobs done", len(completedCommands)))
 			break Outer
 		}
 	}
@@ -342,13 +347,15 @@ func setTimeouts(cmd *cobra.Command) (time.Duration, time.Duration, error) {
 
 	globalDuration, err = time.ParseDuration(globalTimeoutString)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "invalid global timeout %v %v", jobTimeoutString, err)
+		//fmt.Fprintf(os.Stderr, "invalid global timeout %v %v", jobTimeoutString, err)
+		slog.Error(fmt.Sprintf("invalid global timeout %v %v", jobTimeoutString, err))
 		os.Exit(1)
 	}
 
 	jobDuration, err = time.ParseDuration(jobTimeoutString)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "invalid job timeout %v %v", jobTimeoutString, err)
+		//fmt.Fprintf(os.Stderr, "invalid job timeout %v %v", jobTimeoutString, err)
+		slog.Error(fmt.Sprintf("invalid job timeout %v %v", jobTimeoutString, err))
 		os.Exit(1)
 	}
 
@@ -380,7 +387,8 @@ func setTimeouts(cmd *cobra.Command) (time.Duration, time.Duration, error) {
 	// 		jobDuration must be <= globalDuration
 	if jobDuration > 0 && globalDuration > 0 {
 		if !(jobDuration <= globalDuration) {
-			fmt.Fprintf(os.Stderr, "job timeout must be less than global timeout, %v %v", jobDuration, globalDuration)
+			//fmt.Fprintf(os.Stderr, "job timeout must be less than global timeout, %v %v", jobDuration, globalDuration)
+			slog.Error(fmt.Sprintf("job timeout must be less than global timeout, %v %v", jobDuration, globalDuration))
 			os.Exit(1)
 		}
 		return globalDuration, jobDuration, nil
@@ -416,7 +424,8 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 	default:
 		x, err := strconv.Atoi(flags.ConcurrentJobLimit)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Invalid concurrency level: %s\n", flags.ConcurrentJobLimit)
+			//fmt.Fprintf(os.Stderr, "Invalid concurrency level: %s\n", flags.ConcurrentJobLimit)
+			slog.Error(fmt.Sprintf("Invalid concurrency level: %s\n", flags.ConcurrentJobLimit))
 			os.Exit(1)
 		}
 		flags.GoroutineLimit = x
