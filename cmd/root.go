@@ -98,7 +98,7 @@ func init() {
 	rootCmd.Flags().BoolP("flag-errors", "", false, "Print a message to stderr for all completed jobs with an exit code other than zero")
 	rootCmd.Flags().BoolP("pbar", "p", false, "Display a progress bar which ticks up once per completed job")
 	rootCmd.Flags().StringP("job-timeout", "j", "0", "Per-job timeout in time.Duration format (0 default, must be <= global timeout)")
-	rootCmd.Flags().StringP("log", "l", "e", "Enable debug mode (one of d, i, w, e, or q for quiet.  'e' is default.)")
+	rootCmd.Flags().StringP("log", "l", "e", "Enable debug mode (one of d, i, w, e, or q for quiet).")
 
 }
 
