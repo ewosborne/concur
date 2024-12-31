@@ -52,10 +52,10 @@ func Test_buildListOfCommands(t *testing.T) {
 					Status:      TBD,
 					Substituted: "echo hello",
 					Arg:         "hello",
-				},
-			},
-		},
-		{ // Second
+				}, // command
+			}, //command list
+		}, // test case
+		{ // Second test case
 			command: "ping __SUBS__",
 			targets: []string{"www.mit.edu"},
 			token:   "__SUBS__",
