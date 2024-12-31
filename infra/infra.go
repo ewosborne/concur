@@ -336,26 +336,18 @@ Outer:
 	return doneList, pbarFinish
 }
 
-// TODO: pass in flags instead of cmd, makes testing easier
-func setTimeouts(cmd *cobra.Command) (time.Duration, time.Duration, error) {
+func setTimeouts(globalTimeoutString, jobTimeoutString string) (time.Duration, time.Duration, error) {
 	var globalDuration, jobDuration time.Duration
 	var err error
 
-	globalTimeoutString, _ := cmd.Flags().GetString("timeout")
-	jobTimeoutString, _ := cmd.Flags().GetString("job-timeout")
-
 	globalDuration, err = time.ParseDuration(globalTimeoutString)
 	if err != nil {
-		//fmt.Fprintf(os.Stderr, "invalid global timeout %v %v", jobTimeoutString, err)
-		slog.Error(fmt.Sprintf("invalid global timeout %v %v", jobTimeoutString, err))
-		os.Exit(1)
+		return 0, 0, fmt.Errorf("invalid global timeout %v %v", jobTimeoutString, err)
 	}
 
 	jobDuration, err = time.ParseDuration(jobTimeoutString)
 	if err != nil {
-		//fmt.Fprintf(os.Stderr, "invalid job timeout %v %v", jobTimeoutString, err)
-		slog.Error(fmt.Sprintf("invalid job timeout %v %v", jobTimeoutString, err))
-		os.Exit(1)
+		return 0, 0, fmt.Errorf("invalid job timeout %v %v", jobTimeoutString, err)
 	}
 
 	// now the logic starts
@@ -386,11 +378,8 @@ func setTimeouts(cmd *cobra.Command) (time.Duration, time.Duration, error) {
 	// 		jobDuration must be <= globalDuration
 	if jobDuration > 0 && globalDuration > 0 {
 		if !(jobDuration <= globalDuration) {
-			//fmt.Fprintf(os.Stderr, "job timeout must be less than global timeout, %v %v", jobDuration, globalDuration)
-			slog.Error(fmt.Sprintf("job timeout must be less than global timeout, %v %v", jobDuration, globalDuration))
-			os.Exit(1)
+			return 0, 0, fmt.Errorf("job timeout must be less than global timeout, %v %v", jobDuration, globalDuration)
 		}
-		return globalDuration, jobDuration, nil
 	}
 
 	// is that it?
@@ -430,7 +419,15 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 		flags.GoroutineLimit = x
 	}
 
-	flags.Timeout, flags.JobTimeout, _ = setTimeouts(cmd)
+	globalTimeoutString, _ := cmd.Flags().GetString("timeout")
+	jobTimeoutString, _ := cmd.Flags().GetString("job-timeout")
+	t, j, err := setTimeouts(globalTimeoutString, jobTimeoutString)
+	flags.Timeout = t
+	flags.JobTimeout = j
+	if err != nil {
+		slog.Error(fmt.Sprintf("%v", err))
+		os.Exit(1)
+	}
 
 	return flags
 }

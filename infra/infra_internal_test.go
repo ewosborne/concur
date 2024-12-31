@@ -29,9 +29,41 @@ func Test_commandLoop(t *testing.T) {
 	// func commandLoop(loopCtx context.Context, loopCancel context.CancelFunc, commandsToRun CommandList, flags Flags) (CommandList, time.Duration)
 
 }
-func Test_setTimeouts(t *testing.T) {
-	// func setTimeouts(cmd *cobra.Command) (time.Duration, time.Duration, error)
 
+// TODO more test cases because setTimeouts has some ugly logic in it and I expect this to fail sometimes
+func Test_setTimeouts(t *testing.T) {
+	// func setTimeouts(globalTimeoutString, jobTimeoutString string) (time.Duration, time.Duration, error)
+
+	testCases := []struct {
+		global     string
+		job        string
+		expectPass bool
+	}{
+		{ // first test case
+			global:     "8s",
+			job:        "4s",
+			expectPass: true,
+		}, // end first test case
+		{ // first test case
+			global:     "7s",
+			job:        "42s",
+			expectPass: false,
+		}, // end first test case
+	}
+
+	for _, tc := range testCases {
+		// now call the thing
+		global, job, err := setTimeouts(tc.global, tc.job)
+
+		if tc.expectPass == true && err != nil {
+			t.Errorf("error %q when there should be none with %q %q", err, global, job)
+		}
+
+		if tc.expectPass == false && err == nil {
+			t.Errorf("no error seen when there should be one with %q %q", tc.global, tc.job)
+		}
+
+	}
 }
 
 func Test_buildListOfCommands(t *testing.T) {
