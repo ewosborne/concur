@@ -1,5 +1,6 @@
 package infra
 
+// TODO reorder this whole file.
 import (
 	"context"
 	"encoding/json"
@@ -21,11 +22,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type JobStatus int
-type JobID int
-
-var id JobID
-
 const (
 	TBD JobStatus = iota
 	Started
@@ -34,6 +30,12 @@ const (
 	Errored
 	TimedOut
 )
+
+var flagErrors bool
+var id JobID
+
+type JobID int
+type JobStatus int
 
 func (j JobStatus) MarshalJSON() ([]byte, error) {
 	return json.Marshal(j.String())
@@ -58,6 +60,19 @@ func (j JobStatus) String() string {
 	}
 }
 
+type Results struct {
+	Commands CommandList `json:"command"`
+	Info     ResultsInfo `json:"info"`
+}
+
+type ResultsInfo struct {
+	CoroutineLimit        int           `json:"coroutineLimit"`
+	InternalSystemRunTime time.Duration `json:"-"`
+	SystemRuntimeString   string        `json:"systemRuntime"`
+	OriginalCommand       string        `json:"originalCommand"`
+	Timeout               time.Duration `json:"timeout"` // rename this?
+}
+
 type Command struct {
 	ID          JobID     `json:"id"`
 	Status      JobStatus `json:"jobstatus"`
@@ -74,6 +89,17 @@ type Command struct {
 	JobTimeout       time.Duration `json:"jobtimeout"` // TODO these print as ints, would be nice to print as string.
 }
 
+func (c Command) String() string {
+	b, _ := json.MarshalIndent(c, "", " ")
+	return string(b)
+
+}
+
+type CommandList []*Command
+
+// type CommandMap map[JobID]*Command
+type CommandMap map[int]*Command
+
 type Flags struct {
 	Any                bool
 	ConcurrentJobLimit string
@@ -86,19 +112,6 @@ type Flags struct {
 	JobTimeout         time.Duration
 	LogLevel           string
 }
-
-type CommandList []*Command
-
-// type CommandMap map[JobID]*Command
-type CommandMap map[int]*Command
-
-func (c Command) String() string {
-	b, _ := json.MarshalIndent(c, "", " ")
-	return string(b)
-
-}
-
-var flagErrors bool
 
 func Do(template string, targets []string, flags Flags) Results {
 	// do all the heavy lifting here
@@ -151,20 +164,6 @@ func Do(template string, targets []string, flags Flags) Results {
 	res.Info.Timeout = flags.Timeout
 
 	return res
-}
-
-type Results struct {
-	Commands CommandList `json:"command"`
-
-	Info ResultsInfo `json:"info"`
-}
-
-type ResultsInfo struct {
-	CoroutineLimit        int           `json:"coroutineLimit"`
-	InternalSystemRunTime time.Duration `json:"-"`
-	SystemRuntimeString   string        `json:"systemRuntime"`
-	OriginalCommand       string        `json:"originalCommand"`
-	Timeout               time.Duration `json:"timeout"` // rename this?
 }
 
 func GetJSONReport(res Results) (string, error) {
