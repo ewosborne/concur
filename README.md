@@ -38,19 +38,21 @@ You can do that too, or you can just run`go build`.
 Run commands concurrently
 
 Usage:
-  concur <command string> <list of arguments> [flags]
+  concur <command string> <list of hosts> [flags]
 
 Flags:
-      --any                 Return any (the first) command with exit code of zero
-  -c, --concurrent string   Number of concurrent processes (0 = no limit), 'cpu' = one job per cpu core (default "128")
-      --first               First command regardless of exit code
-      --flag-errors         Print a message to stderr for all executed commands with an exit code other than zero
-  -h, --help                help for concur
-  -l, --log level string    Enable debug mode (one of d, i, w, e)
-  -p, --pbar                Display a progress bar which ticks up once per completed job
-  -t, --timeout int         Timeout in sec (0 for no timeout) (default 90)
-      --token string        Token to match for replacement (default "{{1}}")
-  -v, --version             version for concur
+      --any                  Return any (the first) job with exit code of zero
+  -c, --concurrent string    Number of concurrent jobs (0 = no limit), 'cpu' or '1x' = one job per cpu core, '2x' = two jobs per cpu core (default "128")
+      --first                First commanjobd regardless of exit code
+      --flag-errors          Print a message to stderr for all completed jobs with an exit code other than zero
+  -h, --help                 help for concur
+  -j, --job-timeout string   Per-job timeout in time.Duration format (0 default, must be <= global timeout) (default "0")
+  -l, --log string           Enable debug mode (one of d, i, w, e, or q for quiet). (default "e")
+  -p, --pbar                 Display a progress bar which ticks up once per completed job
+  -t, --timeout string       Global timeout in time.Duration format (0 default for no timeout) (default "0")
+      --token string         Token to match for replacement (default "{{1}}")
+  -v, --version              version for concur
+
 ````
 
 Concur takes some mandatory arguments. The first is the command you wish to run concurrently.  All subsequent arguments are whatever it is you want to change about what you run in parallel. It queues up all jobs and runs them on a number of worker goroutines until all jobs have finished - you control this number with `-c/--concurrent`. There is no timeout but you can add one with `--timeout`. There are also a couple of options to return before all jobs are done - `--any` and `--first`, see below.
@@ -193,16 +195,17 @@ Here's the full JSON output from that sample ping.
 `concur` has a number of useful flags:
 
 ```
-      --any                 Return any (the first) command with exit code of zero
-  -c, --concurrent string   Number of concurrent processes (0 = no limit), 'cpu' = one job per cpu core (default "128")
-      --first               First command regardless of exit code
-      --flag-errors         Print a message to stderr for all executed commands with an exit code other than zero
-  -h, --help                help for concur
-  -l, --log level string    Enable debug mode (one of d, i, w, e)
-  -p, --pbar                Display a progress bar which ticks up once per completed job
-  -t, --timeout int         Timeout in sec (0 for no timeout) (default 90)
-      --token string        Token to match for replacement (default "{{1}}")
-  -v, --version             version for concur
+      --any                  Return any (the first) job with exit code of zero
+  -c, --concurrent string    Number of concurrent jobs (0 = no limit), 'cpu' or '1x' = one job per cpu core, '2x' = two jobs per cpu core (default "128")
+      --first                First commanjobd regardless of exit code
+      --flag-errors          Print a message to stderr for all completed jobs with an exit code other than zero
+  -h, --help                 help for concur
+  -j, --job-timeout string   Per-job timeout in time.Duration format (0 default, must be <= global timeout) (default "0")
+  -l, --log string           Enable debug mode (one of d, i, w, e, or q for quiet). (default "e")
+  -p, --pbar                 Display a progress bar which ticks up once per completed job
+  -t, --timeout string       Global timeout in time.Duration format (0 default for no timeout) (default "0")
+      --token string         Token to match for replacement (default "{{1}}")
+  -v, --version              version for concur
 ```
 
 `--any` starts all of the commands but exits when the first one with a zero exit code returns. One thing this is useful for is checking which DNS service is fastest:
@@ -316,7 +319,7 @@ There are two timeout flags, `-t, --timeout` and `-j, --job-timeout`.  Both defa
 
 If `-j` is set it must be less than the global timeout, but as a special case the global timeout can be 0 with a non-zero per-job timeout.
 
-What's the use case here?  Consider a batch of jobs which block on CPU, so you only have as many worker goroutines as CPU cores. << link to reddit comment >>.  In the example below there's a mythical CLI command `do-something-to-image`. You have 10,000 images to process and are running only as many worker goroutines as you have cores (say, 8 cores). If each image normally takes 4sec to process then you'd have 10,000/8 = 1,250 batches of 8 images at a time. 
+What's the use case here?  Consider a batch of jobs which block on CPU, so you only have as many worker goroutines as CPU cores.  In the example below there's a mythical CLI command `do-something-to-image`. You have 10,000 images to process and are running only as many worker goroutines as you have cores (say, 8 cores). If each image normally takes 4sec to process then you'd have 10,000/8 = 1,250 batches of 8 images at a time. 
 
 ```
 concur "do-something-to-image {{1}}" <...10,0000 image names> -j 10s -c 1x
