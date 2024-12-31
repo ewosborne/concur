@@ -21,6 +21,7 @@ var rootCmd = &cobra.Command{
 	RunE:  ConcurCmdE,
 }
 
+// TODO this function does too much and needs to be broken out into testable bits.
 func ConcurCmdE(cmd *cobra.Command, args []string) error {
 
 	var targets []string
