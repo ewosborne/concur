@@ -18,10 +18,10 @@ build:
     cp dist/{{ bin }}_darwin_arm64_v8.0/{{ bin }} .
 
 test: build
-    go test ./tests
+    go test ./tests ./infra
 
 testv: build
-    go test ./tests -test.v
+    go test ./tests ./infra -test.v
 
 fmt:
     just --unstable --fmt

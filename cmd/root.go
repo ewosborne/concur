@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/ewosborne/concur/infra"
 
@@ -21,13 +22,31 @@ var rootCmd = &cobra.Command{
 	RunE:  ConcurCmdE,
 }
 
+// return whether there's something to read on stdin
+func getArgsFromStdin() ([]string, bool) {
+
+	fi, _ := os.Stdin.Stat()
+
+	if (fi.Mode() & os.ModeCharDevice) == 0 {
+		//fmt.Println("reading from stdin")
+
+		bytes, _ := io.ReadAll(os.Stdin)
+		str := string(bytes)
+
+		// .Fields() breaks the input string into separate words.  That seems ok but maybe it's not quite right?
+		return strings.Fields(str), true
+	}
+
+	return nil, false
+}
+
 // TODO this function does too much and needs to be broken out into testable bits.
 func ConcurCmdE(cmd *cobra.Command, args []string) error {
 
 	var targets []string
 	var template string
 
-	stdinArgs, ok := infra.GetStdin()
+	stdinArgs, ok := getArgsFromStdin()
 
 	if ok {
 		targets = stdinArgs

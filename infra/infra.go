@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	_ "log" // magic to make slog look like log
 	"log/slog"
 	"math"
@@ -242,8 +241,8 @@ func executeSingleCommand(jobCtx context.Context, jobCancel context.CancelFunc, 
 }
 
 // TODO don't pass in cmdList, just its length.
-func getPBar(cmdList CommandList, flags Flags) *progressbar.ProgressBar {
-	pbar := progressbar.NewOptions(len(cmdList),
+func getPBar(cmdListLen int, flags Flags) *progressbar.ProgressBar {
+	pbar := progressbar.NewOptions(cmdListLen,
 		progressbar.OptionSetVisibility(flags.Pbar),
 		progressbar.OptionSetItsString("jobs"), // doesn't do anything, don't know why
 		progressbar.OptionShowCount(),
@@ -270,7 +269,7 @@ func commandLoop(loopCtx context.Context, loopCancel context.CancelFunc, command
 	}
 
 	// a jobcount pbar, doesn't print anything unless flags.Pbar is set
-	pbar := getPBar(commandsToRun, flags)
+	pbar := getPBar(len(commandsToRun), flags)
 
 	// launch all goroutines
 
@@ -442,6 +441,7 @@ func buildListOfCommands(command string, targets []string, token string) (Comman
 
 	var ret CommandList
 	for _, target := range targets {
+		slog.Debug(fmt.Sprintf("buildListOfCommands: target %q", target))
 		x := Command{}
 		x.Arg = target
 		x.Substituted = strings.ReplaceAll(command, token, target)
@@ -459,23 +459,6 @@ func buildListOfCommands(command string, targets []string, token string) (Comman
 		ret[i], ret[j] = ret[j], ret[i]
 	})
 
+	slog.Debug(fmt.Sprintf("buildListOfCommands: returning %q %v", ret, nil))
 	return ret, nil
-}
-
-// return whether there's something to read on stdin
-func GetStdin() ([]string, bool) {
-
-	fi, _ := os.Stdin.Stat()
-
-	if (fi.Mode() & os.ModeCharDevice) == 0 {
-		//fmt.Println("reading from stdin")
-
-		bytes, _ := io.ReadAll(os.Stdin)
-		str := string(bytes)
-
-		// .Fields() breaks the input string into separate words.  That seems ok but maybe it's not quite right?
-		return strings.Fields(str), true
-	}
-
-	return nil, false
 }
