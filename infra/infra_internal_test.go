@@ -30,7 +30,7 @@ func Test_commandLoop(t *testing.T) {
 
 }
 
-// TODO more test cases because setTimeouts has some ugly logic in it and I expect this to fail sometimes
+// TODO that tc.expectPass stuff at the bottom feels rickety.
 func Test_setTimeouts(t *testing.T) {
 	// func setTimeouts(globalTimeoutString, jobTimeoutString string) (time.Duration, time.Duration, error)
 
@@ -61,6 +61,23 @@ func Test_setTimeouts(t *testing.T) {
 
 		if tc.expectPass == false && err == nil {
 			t.Errorf("no error seen when there should be one with %q %q", tc.global, tc.job)
+		}
+
+		// I really want to also check to make sure timestamps match but it feels like a separate test loop
+
+		if tc.expectPass {
+			// timestamps should be equal
+			g := cmp.Equal(tc.global, global.String())
+			j := cmp.Equal(tc.job, job.String())
+			if !g && j {
+				t.Errorf("timestamps don't match")
+			}
+		} else if !tc.expectPass { // I expect them to fail so it should be zero
+			g := cmp.Equal(global.String(), "0s")
+			j := cmp.Equal(job.String(), "0s")
+			if !g && j {
+				t.Errorf("timestamps should both be zero and aren't")
+			}
 		}
 
 	}
