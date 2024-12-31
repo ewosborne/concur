@@ -31,7 +31,6 @@ const (
 )
 
 var flagErrors bool
-var id JobID
 
 type JobID int
 type JobStatus int
@@ -440,6 +439,8 @@ func buildListOfCommands(command string, targets []string, token string) (Comman
 	// TODO I don't need a full template engine but should probably have something cooler than this.
 
 	var ret CommandList
+	var id JobID
+
 	for _, target := range targets {
 		slog.Debug(fmt.Sprintf("buildListOfCommands: target %q", target))
 		x := Command{}
