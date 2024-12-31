@@ -196,6 +196,7 @@ func ReportDone(res Results, flags Flags) {
 
 }
 
+// TODO return an error here?  who'd receive it?
 func executeSingleCommand(jobCtx context.Context, jobCancel context.CancelFunc, c *Command) {
 
 	var outb, errb strings.Builder
@@ -223,7 +224,7 @@ func executeSingleCommand(jobCtx context.Context, jobCancel context.CancelFunc, 
 			// TODO clean this up
 			// return fmt.Errorf("command timed out: %w", err)
 			c.Status = TimedOut
-			fmt.Fprintf(os.Stderr, "command timed out: %v\n", err)
+			slog.Info(fmt.Sprintf("command timed out: %v\n", err))
 		}
 		if exitError, ok := err.(*exec.ExitError); ok {
 			c.ReturnCode = exitError.ExitCode()
@@ -238,6 +239,7 @@ func executeSingleCommand(jobCtx context.Context, jobCancel context.CancelFunc, 
 
 }
 
+// TODO don't pass in cmdList, just its length.
 func getPBar(cmdList CommandList, flags Flags) *progressbar.ProgressBar {
 	pbar := progressbar.NewOptions(len(cmdList),
 		progressbar.OptionSetVisibility(flags.Pbar),
@@ -333,6 +335,7 @@ Outer:
 	return doneList, pbarFinish
 }
 
+// TODO: pass in flags instead of cmd, makes testing easier
 func setTimeouts(cmd *cobra.Command) (time.Duration, time.Duration, error) {
 	var globalDuration, jobDuration time.Duration
 	var err error

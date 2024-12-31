@@ -8,6 +8,8 @@ package things: nix, aqua, brew, mise.
 
 clean up code, make it testable
 
+return errors from everything?  everything except goroutines?
+
 TEST.
 
 
