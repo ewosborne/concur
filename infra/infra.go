@@ -294,7 +294,6 @@ func commandLoop(loopCtx context.Context, loopCancel context.CancelFunc, command
 			done <- c // report status.
 			<-tokens  // return token when done.
 		}()
-
 	}
 
 	// collect all goroutines
@@ -302,7 +301,6 @@ func commandLoop(loopCtx context.Context, loopCancel context.CancelFunc, command
 	doneList := CommandList{}
 Outer:
 	for completionCount != len(commandsToRun) {
-
 		select {
 		case c := <-done:
 			completionCount += 1
@@ -323,6 +321,7 @@ Outer:
 		}
 	}
 	// Outer: breaks here
+
 	loopCancel() // is this it?
 
 	// sort doneList by completion time so .commands[0] is the fastest.

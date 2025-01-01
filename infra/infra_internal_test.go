@@ -4,27 +4,11 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 )
 
-/*
-	type Command struct {
-		ID          JobID     `json:"id"`
-		Status      JobStatus `json:"jobstatus"`
-		Substituted string    `json:"substituted"`
-		Arg         string    `json:"arg"`
-		Stdout      []string  `json:"stdout"`
-		//Stdin       string    `json:"stdin"`
-		Stderr           []string      `json:"stderr"`
-		StartTime        time.Time     `json:"starttime"`
-		EndTime          time.Time     `json:"endtime"`
-		RunTimePrintable string        `json:"runtime"`
-		RunTime          time.Duration `json:"-"` // msec runtime for sorting
-		ReturnCode       int           `json:"returncode"`
-		JobTimeout       time.Duration `json:"jobtimeout"` // TODO these print as ints, would be nice to print as string.
-	}
-*/
 // TODO
 func Test_executeSingleCommand(t *testing.T) {
 	// func executeSingleCommand(jobCtx context.Context, jobCancel context.CancelFunc, c *Command)
@@ -60,7 +44,6 @@ func Test_executeSingleCommand(t *testing.T) {
 }
 
 func Test_getPBar(t *testing.T) {
-	// func getPBar(cmdListLen int, flags Flags) *progressbar.ProgressBar
 	t.Parallel()
 	want := "*progressbar.ProgressBar"
 
@@ -76,6 +59,34 @@ func Test_getPBar(t *testing.T) {
 func Test_commandLoop(t *testing.T) {
 	// func commandLoop(loopCtx context.Context, loopCancel context.CancelFunc, commandsToRun CommandList, flags Flags) (CommandList, time.Duration)
 
+	t.Parallel()
+
+	ctx, ctxCancel := context.WithCancel(context.Background())
+
+	jd, _ := time.ParseDuration("5s")
+	cmdList := CommandList{
+		&Command{
+			ID:          0,
+			Status:      TBD,
+			Substituted: "echo hello",
+			Arg:         "hello",
+		}, // command
+		&Command{
+			ID:          0,
+			Status:      TBD,
+			Substituted: "ping -c 1 www.mit.edu",
+			Arg:         "www.mit.edu",
+		},
+	} //CommandList
+
+	flags := Flags{
+		Timeout:        3,
+		JobTimeout:     jd,
+		GoroutineLimit: len(cmdList),
+	}
+
+	resList, runtime := commandLoop(ctx, ctxCancel, cmdList, flags)
+	t.Log(resList, runtime)
 }
 
 // TODO something is off - sometimes when I pass in zero timeout I get infinite back, that's by design, but how do I test it?
