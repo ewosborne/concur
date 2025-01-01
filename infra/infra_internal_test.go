@@ -24,7 +24,6 @@ func Test_executeSingleCommand(t *testing.T) {
 	executeSingleCommand(ctx, ctxCancel, &c)
 
 	// now what?  sanity check stuff
-	t.Log(c)
 
 	if c.Status != Finished {
 		t.Errorf("status should be Finished but is instead %q", c.Status)
@@ -87,7 +86,18 @@ func Test_commandLoop(t *testing.T) {
 	}
 
 	resList, runtime := commandLoop(ctx, ctxCancel, cmdList, flags)
-	t.Log(resList, runtime)
+	// t.Log(resList, runtime)
+	//  not sure what else to check in these two here
+	if runtime < 0 {
+		t.Errorf("runtime is too small %q", runtime)
+	}
+
+	for _, cmd := range resList {
+		if cmd.Status != Finished {
+			t.Errorf("expected status Finished but got %q", cmd.Status)
+		}
+	}
+
 }
 
 // TODO something is off - sometimes when I pass in zero timeout I get infinite back, that's by design, but how do I test it?
