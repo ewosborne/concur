@@ -1,19 +1,67 @@
 package infra
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 )
 
+/*
+	type Command struct {
+		ID          JobID     `json:"id"`
+		Status      JobStatus `json:"jobstatus"`
+		Substituted string    `json:"substituted"`
+		Arg         string    `json:"arg"`
+		Stdout      []string  `json:"stdout"`
+		//Stdin       string    `json:"stdin"`
+		Stderr           []string      `json:"stderr"`
+		StartTime        time.Time     `json:"starttime"`
+		EndTime          time.Time     `json:"endtime"`
+		RunTimePrintable string        `json:"runtime"`
+		RunTime          time.Duration `json:"-"` // msec runtime for sorting
+		ReturnCode       int           `json:"returncode"`
+		JobTimeout       time.Duration `json:"jobtimeout"` // TODO these print as ints, would be nice to print as string.
+	}
+*/
 // TODO
 func Test_executeSingleCommand(t *testing.T) {
 	// func executeSingleCommand(jobCtx context.Context, jobCancel context.CancelFunc, c *Command)
+
+	// needs from c: Substituted. and it fiddles with stuff on the way back in.
+	ctx, ctxCancel := context.WithCancel(context.Background())
+
+	c := Command{
+		Substituted: "echo hello",
+	}
+
+	executeSingleCommand(ctx, ctxCancel, &c)
+
+	// now what?  sanity check stuff
+	t.Log(c)
+
+	if c.Status != Finished {
+		t.Errorf("status should be Finished but is instead %q", c.Status)
+	}
+
+	if c.RunTime <= 0 {
+		t.Errorf("runtime should be >0 but is instead %q", c.RunTime)
+	}
+
+	if c.ReturnCode != 0 {
+		t.Errorf("return code from echo should be 0 but is instead %v", c.ReturnCode)
+	}
+
+	if c.Stdout[0] != "hello" || len(c.Stdout) != 2 { // len 2 because newline is a separate slice item
+		t.Errorf("stdout is wonky: %q", c.Stdout)
+	}
+
 }
 
 func Test_getPBar(t *testing.T) {
 	// func getPBar(cmdListLen int, flags Flags) *progressbar.ProgressBar
+	t.Parallel()
 	want := "*progressbar.ProgressBar"
 
 	tmp := getPBar(42, Flags{})
@@ -30,9 +78,11 @@ func Test_commandLoop(t *testing.T) {
 
 }
 
-// TODO that tc.expectPass stuff at the bottom feels rickety.
+// TODO something is off - sometimes when I pass in zero timeout I get infinite back, that's by design, but how do I test it?
 func Test_setTimeouts(t *testing.T) {
 	// func setTimeouts(globalTimeoutString, jobTimeoutString string) (time.Duration, time.Duration, error)
+
+	t.Parallel()
 
 	testCases := []struct {
 		global     string
@@ -44,11 +94,26 @@ func Test_setTimeouts(t *testing.T) {
 			job:        "4s",
 			expectPass: true,
 		}, // end first test case
-		{ // first test case
+		{ // second test case
 			global:     "7s",
 			job:        "42s",
 			expectPass: false,
-		}, // end first test case
+		}, // end second test case
+		{
+			global:     "0s",
+			job:        "2s",
+			expectPass: true,
+		},
+		{
+			global:     "10s",
+			job:        "10s",
+			expectPass: true,
+		},
+		{
+			global:     "0s",
+			job:        "0s",
+			expectPass: true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -63,28 +128,12 @@ func Test_setTimeouts(t *testing.T) {
 			t.Errorf("no error seen when there should be one with %q %q", tc.global, tc.job)
 		}
 
-		// I really want to also check to make sure timestamps match but it feels like a separate test loop
-
-		if tc.expectPass {
-			// timestamps should be equal
-			g := cmp.Equal(tc.global, global.String())
-			j := cmp.Equal(tc.job, job.String())
-			if !g && j {
-				t.Errorf("timestamps don't match")
-			}
-		} else if !tc.expectPass { // I expect them to fail so it should be zero
-			g := cmp.Equal(global.String(), "0s")
-			j := cmp.Equal(job.String(), "0s")
-			if !g && j {
-				t.Errorf("timestamps should both be zero and aren't")
-			}
-		}
-
 	}
 }
 
 func Test_buildListOfCommands(t *testing.T) {
 
+	t.Parallel()
 	testCases := []struct {
 		command  string
 		targets  []string
@@ -103,7 +152,7 @@ func Test_buildListOfCommands(t *testing.T) {
 					Arg:         "hello",
 				}, // command
 			}, //command list
-		}, // test case
+		}, // first test case
 		{ // Second test case
 			command: "ping __SUBS__",
 			targets: []string{"www.mit.edu"},

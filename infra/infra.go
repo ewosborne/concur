@@ -210,7 +210,11 @@ func executeSingleCommand(jobCtx context.Context, jobCancel context.CancelFunc, 
 	f := strings.Fields(c.Substituted)
 	name, args := f[0], f[1:]
 
+	c.StartTime = time.Now()
 	cmd := exec.CommandContext(jobCtx, name, args...)
+	c.EndTime = time.Now()
+	c.RunTime = c.EndTime.Sub(c.StartTime)
+	c.RunTimePrintable = c.RunTime.String()
 
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
@@ -276,7 +280,6 @@ func commandLoop(loopCtx context.Context, loopCancel context.CancelFunc, command
 
 		go func() {
 			tokens <- struct{}{} // get permission to start
-			c.StartTime = time.Now()
 
 			// create jobCtx and pass it in
 			// workerCtx, workerCancel := context.WithTimeout(mainCtx, 5*time.Second)
@@ -287,9 +290,6 @@ func commandLoop(loopCtx context.Context, loopCancel context.CancelFunc, command
 			c.JobTimeout = flags.JobTimeout
 
 			executeSingleCommand(jobCtx, jobCancel, c)
-			c.EndTime = time.Now()
-			c.RunTime = c.EndTime.Sub(c.StartTime)
-			c.RunTimePrintable = c.RunTime.String()
 
 			done <- c // report status.
 			<-tokens  // return token when done.
