@@ -13,6 +13,7 @@ import (
 func Test_executeSingleCommand(t *testing.T) {
 	// func executeSingleCommand(jobCtx context.Context, jobCancel context.CancelFunc, c *Command)
 
+	t.Parallel()
 	// needs from c: Substituted. and it fiddles with stuff on the way back in.
 	ctx, ctxCancel := context.WithCancel(context.Background())
 
