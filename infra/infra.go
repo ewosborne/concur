@@ -98,6 +98,7 @@ type CommandList []*Command
 // type CommandMap map[JobID]*Command
 type CommandMap map[int]*Command
 
+// TODO I think most of my testing is around varying these flags.
 type Flags struct {
 	Any                bool
 	ConcurrentJobLimit string
@@ -389,6 +390,8 @@ func setTimeouts(globalTimeoutString, jobTimeoutString string) (time.Duration, t
 
 func PopulateFlags(cmd *cobra.Command) Flags {
 
+	var err error
+
 	flags := Flags{}
 	// I sure wish there was a cleaner way to do this
 
@@ -410,8 +413,7 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 		flags.GoroutineLimit = runtime.NumCPU() * 2
 	default:
 		x, err := strconv.Atoi(flags.ConcurrentJobLimit)
-		if err != nil {
-			//fmt.Fprintf(os.Stderr, "Invalid concurrency level: %s\n", flags.ConcurrentJobLimit)
+		if err != nil || x == 0 {
 			slog.Error(fmt.Sprintf("Invalid concurrency level: %s\n", flags.ConcurrentJobLimit))
 			os.Exit(1)
 		}
@@ -420,9 +422,8 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 
 	globalTimeoutString, _ := cmd.Flags().GetString("timeout")
 	jobTimeoutString, _ := cmd.Flags().GetString("job-timeout")
-	t, j, err := setTimeouts(globalTimeoutString, jobTimeoutString)
-	flags.Timeout = t
-	flags.JobTimeout = j
+	flags.Timeout, flags.JobTimeout, err = setTimeouts(globalTimeoutString, jobTimeoutString)
+
 	if err != nil {
 		slog.Error(fmt.Sprintf("%v", err))
 		os.Exit(1)
