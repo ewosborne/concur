@@ -342,7 +342,7 @@ func setTimeouts(globalTimeoutString, jobTimeoutString string) (time.Duration, t
 
 	globalDuration, err = time.ParseDuration(globalTimeoutString)
 	if err != nil {
-		return 0, 0, fmt.Errorf("invalid global timeout %v %v", jobTimeoutString, err)
+		return 0, 0, fmt.Errorf("invalid global timeout %v %v", globalTimeoutString, err)
 	}
 
 	jobDuration, err = time.ParseDuration(jobTimeoutString)
@@ -396,6 +396,7 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 	// I sure wish there was a cleaner way to do this
 
 	flags.Token, _ = cmd.Flags().GetString("token")
+	slog.Error(fmt.Sprintf("token is %q", flags.Token))
 	flags.FlagErrors, _ = cmd.Flags().GetBool("flag-errors")
 	flags.FirstZero, _ = cmd.Flags().GetBool("first")
 	flags.Pbar, _ = cmd.Flags().GetBool("pbar")
@@ -414,7 +415,7 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 	default:
 		x, err := strconv.Atoi(flags.ConcurrentJobLimit)
 		if err != nil || x == 0 {
-			slog.Error(fmt.Sprintf("Invalid concurrency level: %s\n", flags.ConcurrentJobLimit))
+			slog.Error(fmt.Sprintf("Invalid concurrency level: %q\n", flags.ConcurrentJobLimit))
 			os.Exit(1)
 		}
 		flags.GoroutineLimit = x

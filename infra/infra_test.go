@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/ewosborne/concur/infra"
+	"github.com/google/go-cmp/cmp"
+	"github.com/spf13/cobra"
 )
 
 // test all exported functions
@@ -58,8 +60,44 @@ func TestReportDone(t *testing.T) {
 
 }
 
-// TODO I can't get out of this without mocking cmd.  ick.
+// TODO keep working
 func TestPopulateFlags(t *testing.T) {
+	cmd := &cobra.Command{
+		Use: "test",
+		Run: func(cmd *cobra.Command, args []string) {
+			// Command logic here
+		},
+	}
+
+	// Define flags
+
+	cmd.Flags().String("token", "{{1}}", "Token flag")
+	cmd.Flags().String("concurrent", "42", "Concurrency level")
+	cmd.Flags().String("job-timeout", "4s", "Job timeout")
+	cmd.Flags().String("timeout", "8s", "Global timeout")
+
+	// string token, bool flagErrors, bool firstzero, bool pbar, string loglevel
+	//  bool any, string concurrent, string timeout, string job-timeout
+
+	// Mock the flags by setting them
+
+	// expect Flag back
+
+	got := infra.PopulateFlags(cmd)
+
+	// sanity check Flags
+	pd, _ := time.ParseDuration("4s")
+	var want = infra.Flags{
+		Token:              "{{1}}",
+		ConcurrentJobLimit: "42",
+		GoroutineLimit:     42,
+		JobTimeout:         pd,
+		Timeout:            2 * pd,
+	}
+
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("I have a diff want/got \n%s", diff)
+	}
 
 }
 
