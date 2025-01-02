@@ -79,10 +79,6 @@ func TestPopulateFlags(t *testing.T) {
 	// string token, bool flagErrors, bool firstzero, bool pbar, string loglevel
 	//  bool any, string concurrent, string timeout, string job-timeout
 
-	// Mock the flags by setting them
-
-	// expect Flag back
-
 	got := infra.PopulateFlags(cmd)
 
 	// sanity check Flags
