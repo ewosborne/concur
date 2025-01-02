@@ -123,3 +123,8 @@ func init() {
 func SetVersionInfo(version string) {
 	rootCmd.Version = version
 }
+
+func TestscriptEntryPoint() int {
+	Execute()
+	return 0
+}

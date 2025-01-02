@@ -396,7 +396,7 @@ func PopulateFlags(cmd *cobra.Command) Flags {
 	// I sure wish there was a cleaner way to do this
 
 	flags.Token, _ = cmd.Flags().GetString("token")
-	slog.Error(fmt.Sprintf("token is %q", flags.Token))
+	slog.Debug(fmt.Sprintf("token is %q", flags.Token))
 	flags.FlagErrors, _ = cmd.Flags().GetBool("flag-errors")
 	flags.FirstZero, _ = cmd.Flags().GetBool("first")
 	flags.Pbar, _ = cmd.Flags().GetBool("pbar")

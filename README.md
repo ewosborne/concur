@@ -85,7 +85,7 @@ This runs `ping -c 1` for each of those three web sites, replacing `{{1}}` with 
 
 There are two top-level keys in that JSON, `command` and `info`.  `info` doesn't have much in it now but `SystemRuntime` tells you how long it took to finish everything. 
 
-`command` is where most of the fun is. Take a look at the example below. It's a list of information about each command which was run, sorted by runtime, fastest first.  This means that concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org | jq '.command[0] | '.arg' + " " + .runtime'always gives you the host which responded first, but -- spoiler alert!  -- there's a flag for that.  `concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org --any` gives you the same thing, albeit the full JSON output, not just the runtime and argument name.
+`command` is where most of the fun is. Take a look at the example below. It's a list of information about each command which was run, sorted by runtime, fastest first.  This means that `concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org | jq '.command[0] | '.arg' + " " + .runtime'` always gives you the host which responded first, but -- spoiler alert!  -- there's a flag for that.  `concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org --any` gives you the same thing, albeit the full JSON output, not just the runtime and argument name.
 
 ```
 concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org | jq '.command[0]
@@ -282,7 +282,7 @@ command ping -c 1 www.slashdot.ogr exited with error code 68
 ```
 68 is apparently what `ping` uses to mean `cannot resolve host`.  
 
-'  -j, --job-timeout' takes a string in time.Duration format. It sets a per-job timeout; see the Handling Timeouts section for details.
+`job-timeout` takes a string in time.Duration format. It sets a per-job timeout; see the Handling Timeouts section for details.
 
 `-l, --log level` takes a single letter parameter, one of `[dwie]` - Debug, Warn, Infom, Error - and emits logs of that level or higher to stderr. It's very much a work in progress but right now looks like this:
 
@@ -311,7 +311,7 @@ There's a fixed 250ms delay after the last job runs so that you can see that the
 
 
 ## handling timeouts
-There are two timeout flags, `-t, --timeout` and `-j, --job-timeout`.  Both default to 0, which means both are infinite. They both take arguments in time.Duration format, e.g. '15s' for 15 seconds.
+There are two timeout flags, `-t, --timeout` and `-j, --job-timeout`.  Both are infinite by default (setting a timeout of `0` does this explictly). They both take arguments in time.Duration format, e.g. '15s' for 15 seconds.
 
 `-t` is a global timeout - if any jobs exceed this timeout then all jobs are killed and I try to return whatever I can about what's already been completed.
 
