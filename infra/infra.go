@@ -4,6 +4,7 @@ package infra
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	_ "log" // magic to make slog look like log
 	"log/slog"
@@ -112,6 +113,10 @@ type Flags struct {
 	LogLevel           string
 }
 
+var (
+	ErrInfra = errors.New("sample infra error TODO")
+)
+
 func Do(template string, targets []string, flags Flags) Results {
 	// do all the heavy lifting here
 	var ctx context.Context
@@ -169,8 +174,9 @@ func GetJSONReport(res Results) (string, error) {
 	res.Info.SystemRuntimeString = res.Info.InternalSystemRunTime.Truncate(time.Millisecond).String()
 	jsonResults, err := json.MarshalIndent(res, "", " ")
 	if err != nil {
-		// TODO  slog.Error("error marshaling results")
-		return "", err
+
+		// TODO does this do anything useful?
+		return "", fmt.Errorf("getJSONreport error %w: %w", err, ErrInfra)
 	}
 
 	return string(jsonResults), nil

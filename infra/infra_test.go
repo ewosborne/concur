@@ -44,8 +44,10 @@ func TestDo(t *testing.T) {
 		}
 	}
 
-	j, _ := infra.GetJSONReport(results)
-	if !json.Valid([]byte(j)) {
+	j, err := infra.GetJSONReport(results)
+	if err != nil {
+		t.Errorf("error calling GetJSONReport: %v", err)
+	} else if !json.Valid([]byte(j)) {
 		t.Error("appears to not be valid json wtf")
 	}
 
