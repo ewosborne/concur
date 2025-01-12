@@ -213,9 +213,6 @@ func executeSingleCommand(jobCtx context.Context, jobCancel context.CancelFunc, 
 
 	c.StartTime = time.Now()
 	cmd := exec.CommandContext(jobCtx, name, args...)
-	c.EndTime = time.Now()
-	c.RunTime = c.EndTime.Sub(c.StartTime)
-	c.RunTimePrintable = c.RunTime.String()
 
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
@@ -223,6 +220,9 @@ func executeSingleCommand(jobCtx context.Context, jobCancel context.CancelFunc, 
 	c.Status = Running
 	err := cmd.Run()
 
+	c.EndTime = time.Now()
+	c.RunTime = c.EndTime.Sub(c.StartTime)
+	c.RunTimePrintable = c.RunTime.String()
 	if err != nil {
 		c.Status = Errored
 		if jobCtx.Err() == context.DeadlineExceeded {
