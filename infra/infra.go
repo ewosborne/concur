@@ -166,7 +166,7 @@ func Do(template string, targets []string, flags Flags) Results {
 }
 
 func GetJSONReport(res Results) (string, error) {
-	res.Info.SystemRuntimeString = res.Info.InternalSystemRunTime.Truncate(time.Millisecond).String()
+	res.Info.SystemRuntimeString = res.Info.InternalSystemRunTime.Round(time.Millisecond).String()
 	jsonResults, err := json.MarshalIndent(res, "", " ")
 	if err != nil {
 		// TODO  slog.Error("error marshaling results")
@@ -291,6 +291,9 @@ func commandLoop(loopCtx context.Context, loopCancel context.CancelFunc, command
 			c.JobTimeout = flags.JobTimeout
 
 			executeSingleCommand(jobCtx, jobCancel, c)
+			c.EndTime = time.Now()
+			c.RunTime = c.EndTime.Sub(c.StartTime)
+			c.RunTimePrintable = c.RunTime.Round(100 * time.Microsecond).String()
 
 			done <- c // report status.
 			<-tokens  // return token when done.
