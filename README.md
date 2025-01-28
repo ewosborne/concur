@@ -19,11 +19,16 @@ runs five digs in parallel and spits out some JSON about the results.  Try it!  
 # BIG IMPORTANT NOTE
 This is a work in progress written by a guy who doesn't write code for a living. I believe this is pretty solid at its core and does what it says on the tin but it might have weird corner cases.  It is by no means idiomatic go, although I tried. PRs and comments welcome. It doesn't have many tests and could use a restructure. Maybe someday.
 
-# building
+## Pre-built binary
+You can grab a pre-built binary from the [latest release](https://github.com/ewosborne/concur/releases/tag/v0.4.1).
+
+
+## building
 You may want to build from scratch. I use [just](https://just.systems/) to manage building and testing so everything is in a `justfile` and done with `goreleaser` so it gets a little complicated. [Check it out](justfile).
 
 You can do that too, or you can just run`go build`.
 
+## nix
 A [nix](https://nixos.org/) flake has been provided, run `nix shell github:ewosborne/concur` / `nix profile install github:ewosborne/concur` or clone and run `nix build` in git repo.
 
 # usage
@@ -32,23 +37,41 @@ A [nix](https://nixos.org/) flake has been provided, run `nix shell github:ewosb
 Run commands concurrently
 
 Usage:
-  concur <command string> <list of arguments> [flags]
+  concur <command string> <list of hosts> [flags]
 
 Flags:
-      --any                 Return any (the first) command with exit code of zero
-  -c, --concurrent string   Number of concurrent processes (0 = no limit), 'cpu' = one job per cpu core (default "128")
-      --first               First command regardless of exit code
-      --flag-errors         Print a message to stderr for all executed commands with an exit code other than zero
-  -h, --help                help for concur
-  -l, --log level string    Enable debug mode (one of d, i, w, e)
-  -p, --pbar                Display a progress bar which ticks up once per completed job
-  -t, --timeout int         Timeout in sec (0 for no timeout) (default 90)
-      --token string        Token to match for replacement (default "{{1}}")
-  -v, --version             version for concur
+      --any                  Return any (the first) job with exit code of zero
+  -c, --concurrent string    Number of concurrent jobs (0 = no limit), 'cpu' or '1x' = one job per cpu core, '2x' = two jobs per cpu core (default "128")
+      --first                First commanjobd regardless of exit code
+      --flag-errors          Print a message to stderr for all completed jobs with an exit code other than zero
+  -h, --help                 help for concur
+  -j, --job-timeout string   Per-job timeout in time.Duration format (0 default, must be <= global timeout) (default "0")
+  -l, --log string           Enable debug mode (one of d, i, w, e, or q for quiet). (default "e")
+  -p, --pbar                 Display a progress bar which ticks up once per completed job
+  -t, --timeout string       Global timeout in time.Duration format (0 default for no timeout) (default "0")
+      --token string         Token to match for replacement (default "{{1}}")
+  -v, --version              version for concur
+
 ````
 
 Concur takes some mandatory arguments. The first is the command you wish to run concurrently.  All subsequent arguments are whatever it is you want to change about what you run in parallel. It queues up all jobs and runs them on a number of worker goroutines until all jobs have finished - you control this number with `-c/--concurrent`. There is no timeout but you can add one with `--timeout`. There are also a couple of options to return before all jobs are done - `--any` and `--first`, see below.
 And `--pbar` displays a progress bar which counts off as jobs finish. I find this useful for longer running jobs like `scp`ing a file to a bunch of hosts.
+
+`concur` also takes targets via `stdin`:
+
+
+```
+eric@Erics-MacBook-Air concur % ls /tmp/*foo
+zsh: no matches found: /tmp/*foo
+eric@Erics-MacBook-Air concur % echo "foo bar baz" | concur "touch /tmp/{{1}}.foo"
+{
+ "command": [
+...
+...
+...
+eric@Erics-MacBook-Air concur % ls /tmp/*foo
+/tmp/bar.foo  /tmp/baz.foo  /tmp/foo.foo
+```
 
 ## Example
 Here's an example which pings three different hosts:
@@ -61,7 +84,7 @@ This runs `ping -c 1` for each of those three web sites, replacing `{{1}}` with 
 
 There are two top-level keys in that JSON, `command` and `info`.  `info` doesn't have much in it now but `SystemRuntime` tells you how long it took to finish everything. 
 
-`command` is where most of the fun is. Take a look at the example below. It's a list of information about each command which was run, sorted by runtime, fastest first.  This means that concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org | jq '.command[0] | '.arg' + " " + .runtime'always gives you the host which responded first, but -- spoiler alert!  -- there's a flag for that.  `concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org --any` gives you the same thing, albeit the full JSON output, not just the runtime and argument name.
+`command` is where most of the fun is. Take a look at the example below. It's a list of information about each command which was run, sorted by runtime, fastest first.  This means that `concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org | jq '.command[0] | '.arg' + " " + .runtime'` always gives you the host which responded first, but -- spoiler alert!  -- there's a flag for that.  `concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org --any` gives you the same thing, albeit the full JSON output, not just the runtime and argument name.
 
 ```
 concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org | jq '.command[0]
@@ -171,16 +194,17 @@ Here's the full JSON output from that sample ping.
 `concur` has a number of useful flags:
 
 ```
-      --any                 Return any (the first) command with exit code of zero
-  -c, --concurrent string   Number of concurrent processes (0 = no limit), 'cpu' = one job per cpu core (default "128")
-      --first               First command regardless of exit code
-      --flag-errors         Print a message to stderr for all executed commands with an exit code other than zero
-  -h, --help                help for concur
-  -l, --log level string    Enable debug mode (one of d, i, w, e)
-  -p, --pbar                Display a progress bar which ticks up once per completed job
-  -t, --timeout int         Timeout in sec (0 for no timeout) (default 90)
-      --token string        Token to match for replacement (default "{{1}}")
-  -v, --version             version for concur
+      --any                  Return any (the first) job with exit code of zero
+  -c, --concurrent string    Number of concurrent jobs (0 = no limit), 'cpu' or '1x' = one job per cpu core, '2x' = two jobs per cpu core (default "128")
+      --first                First commanjobd regardless of exit code
+      --flag-errors          Print a message to stderr for all completed jobs with an exit code other than zero
+  -h, --help                 help for concur
+  -j, --job-timeout string   Per-job timeout in time.Duration format (0 default, must be <= global timeout) (default "0")
+  -l, --log string           Enable debug mode (one of d, i, w, e, or q for quiet). (default "e")
+  -p, --pbar                 Display a progress bar which ticks up once per completed job
+  -t, --timeout string       Global timeout in time.Duration format (0 default for no timeout) (default "0")
+      --token string         Token to match for replacement (default "{{1}}")
+  -v, --version              version for concur
 ```
 
 `--any` starts all of the commands but exits when the first one with a zero exit code returns. One thing this is useful for is checking which DNS service is fastest:
@@ -257,6 +281,8 @@ command ping -c 1 www.slashdot.ogr exited with error code 68
 ```
 68 is apparently what `ping` uses to mean `cannot resolve host`.  
 
+`job-timeout` takes a string in time.Duration format. It sets a per-job timeout; see the Handling Timeouts section for details.
+
 `-l, --log level` takes a single letter parameter, one of `[dwie]` - Debug, Warn, Infom, Error - and emits logs of that level or higher to stderr. It's very much a work in progress but right now looks like this:
 
 ```
@@ -278,38 +304,57 @@ concur "scp -O rudder.zip {{1}}:" nas wamp-rat cloud --pbar
 There's a fixed 250ms delay after the last job runs so that you can see that the progress bar finishes.  It is not counted in the system runtime. Try `concur "sleep {{1}}" 2 3 4 --pbar` and you'll see what I mean.
 
 
-`-t, --timeout` sets a timeout, after which it kills all jobs and moves on with its life. The default is no timeout at all, so if you have a process which hangs, it'll just sit there indefinitely. The error message isn't elegant but it tries to give you as much data as it can get:
-
-```
-concur "sleep {{1}}" 1 2 3 4 5 -t 2
-context popped, 0 jobs done{
- "command": [
-  {
-   "id": 0,
-   "jobstatus": "Finished",
-   "original": "sleep {{1}}",
-   "substituted": "sleep 1",
-   "arg": "1",
-   "stdout": [
-    ""
-   ],
-   "stderr": [
-    ""
-   ],
-   "starttime": "2024-12-27T16:58:03.513929-05:00",
-   "endtime": "2024-12-27T16:58:04.523784-05:00",
-   "runtime": "1.009861334s",
-   "returncode": 0
-  }
- ],
- "info": {
-  "CoroutineLimit": 128,
-  "SystemRuntime": "2.001s"
- }
-}
-```
-
-The `context popped` error comes out on stderr, so you can still pipe `concur` to `jq`.
-Note that timeouts aren't perfect, they'll always be at least the value you specify plus a few milliseconds for `go` to catch up with paperwork and stuff. This means that sometimes a `sleep 2` with timeout of 2 will succeed and sometimes it'll fail.
+`-t, --timeout` sets a timeout, after which it kills all jobs and moves on with its life.  See the Handling Timeouts section for details.
 
 `--token` is the token I look for in the command string to tell me where to sub in a command paremeter. The default is the literal string `{{1}}`. This just a simple string substitution under the hood, not some fancy template engine.  You can change it to any pattern you like, e.g. `./concur "ping -c 1 @@@" www.mit.edu www.ucla.edu www.slashdot.org --token @@@`.  You can probably do Little Bobby Tables stuff with this if you try, but why would you do that to yourself?
+
+
+## handling timeouts
+There are two timeout flags, `-t, --timeout` and `-j, --job-timeout`.  Both are infinite by default (setting a timeout of `0` does this explictly). They both take arguments in time.Duration format, e.g. '15s' for 15 seconds.
+
+`-t` is a global timeout - if any jobs exceed this timeout then all jobs are killed and I try to return whatever I can about what's already been completed.
+
+`-j` is a per-job timeout.  It is _the same for each job_.  If any job exceeds this timeout it is killed but other jobs continue processing.
+
+If `-j` is set it must be less than the global timeout, but as a special case the global timeout can be 0 with a non-zero per-job timeout.
+
+What's the use case here?  Consider a batch of jobs which block on CPU, so you only have as many worker goroutines as CPU cores.  In the example below there's a mythical CLI command `do-something-to-image`. You have 10,000 images to process and are running only as many worker goroutines as you have cores (say, 8 cores). If each image normally takes 4sec to process then you'd have 10,000/8 = 1,250 batches of 8 images at a time. 
+
+```
+concur "do-something-to-image {{1}}" <...10,0000 image names> -j 10s -c 1x
+```
+
+This says: start up one worker thread for every CPU and feed them ten thousand images. If any image takes longer than 10sec to process then give up on that particular image and move on to the next one, but run the entire batch of jobs until they're all done or have all timed out. 
+
+Contrast this with a global timeout for the same operation:
+
+```
+concur "do-something-to-image {{1}}" <...10,0000 image names> -t 2h -c 1x
+```
+
+This will run the job for up to two hours and then once runtime hits 2h it will kill all jobs and return what it can about what's been done.
+
+# terminology
+
+I use four different words to describe four different parts of the system: template, command, target, and job.
+Let's say you run
+
+```
+concur "ping -c 1 {{1}}" www.mit.edu www.ucla.edu www.slashdot.org 
+```
+
+`ping -c 1 {{1}}` is the _template_
+
+There are three _targets_: `www.mit.edu`, `www.ucla.edu`, `www.slashdot.org`.
+
+Iterating over targets and filling out templates yields _commands_:
+
+```
+ping -c 1 www.mit.edu
+ping -c 1 www.ucla.edu
+ping -c 1 www.slashdot.org
+```
+
+and when this command is executed I refer to it as a _job_
+
+This terminology seems to work for me and I've tried to be consistent with it throughout.

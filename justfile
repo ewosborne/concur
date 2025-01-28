@@ -18,10 +18,10 @@ build:
     cp dist/{{ bin }}_darwin_arm64_v8.0/{{ bin }} .
 
 test: build
-    go test ./tests
+    go test ./infra
 
 testv: build
-    go test ./tests -test.v
+    go test  ./infra -test.v
 
 fmt:
     just --unstable --fmt
@@ -51,4 +51,4 @@ release arg1: require-env testv
     echo "{{ arg1 }}" > ./.version
     git tag {{ arg1 }}
     git push origin {{ arg1 }}
-    goreleaser release
+    goreleaser release --release-notes RELEASENOTES.md 
