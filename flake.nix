@@ -30,7 +30,7 @@
               version = builtins.readFile ./.version;
 
               # Must be updated when dependencies are updated
-              vendorHash = "sha256-SESMSCNoiKu0aUyZhatMWyGnd9Q+qlnTOG274m3ydCI="; 
+              vendorHash = "sha256-jwAaLYPgv6i4NiZ0+UwIL70xUwI5KaqDhwQJ5vLZjNE="; 
 
               doCheck = false;
 
