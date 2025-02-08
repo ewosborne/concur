@@ -1,17 +1,7 @@
-Lots has happened since v0.4.1.
-
-
-* terminology cleanup, see README.me
-* target names now accepted on stdin
-* basic logging infra established,  although that's very much still a work in progress, I'm very confused by how go handles logging.
-* per-job timeout as well as the preexisting global timeout
-* internal restructuring but it's really just lipstick on a pig
-
-
-I still have more to do but I figure the timeout, debug, and stdin work is enough to merit an 0.5.0 release.
+Release v0.5.3. The big thing here is nix support, thanks to @dko1905.
+At this point `concur` is pretty stable and I'm thinking of what it would take to get to v1.0.0.
 
 Steps to 1.0.0:
-    * tests!  tests!  I have, like, none, and my code is kinda sprawling and hard to test.
-    * rewrite! so that it can be tested.
-    * add debugs and errors, the ability to send them is useless if I don't use them.
-    * package manager support, at least brew because that's the one I use. 
+    * better debugging and error handling
+    * more package manager support, at least brew because that's the one I use. 
+    * perhaps a text output option - I find myself doing `concur "ssh {{1}} uptime" hostA hostB` and it would be nice to have the answer on one line without having to comb through json. We'll see.
