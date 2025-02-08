@@ -48,6 +48,7 @@ require-env:
 
 release arg1: require-env testv
     rm -rf dist/
+    echo "{{ arg1 }}" > ./.version
     git tag {{ arg1 }}
     git push origin {{ arg1 }}
     goreleaser release --release-notes RELEASENOTES.md 

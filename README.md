@@ -19,9 +19,6 @@ runs five digs in parallel and spits out some JSON about the results.  Try it!  
 # BIG IMPORTANT NOTE
 This is a work in progress written by a guy who doesn't write code for a living. I believe this is pretty solid at its core and does what it says on the tin but it might have weird corner cases.  It is by no means idiomatic go, although I tried. PRs and comments welcome. It doesn't have many tests and could use a restructure. Maybe someday.
 
-# installing
-nix support coming soon, and eventually I'd like to add other package managers. Work in progress.
-
 ## Pre-built binary
 You can grab a pre-built binary from the [latest release](https://github.com/ewosborne/concur/releases/tag/v0.4.1).
 
@@ -31,6 +28,8 @@ You may want to build from scratch. I use [just](https://just.systems/) to manag
 
 You can do that too, or you can just run`go build`.
 
+## nix
+A [nix](https://nixos.org/) flake has been provided, run `nix shell github:ewosborne/concur` / `nix profile install github:ewosborne/concur` or clone and run `nix build` in git repo.
 
 # usage
 
